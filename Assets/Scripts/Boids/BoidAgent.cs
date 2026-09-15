@@ -19,12 +19,17 @@ public class BoidAgent : MonoBehaviour
     private bool isCollected;
     private float interactionTimer;
 
+    private string currentBehaviour = "Flocking";
+
     public bool IsDead =>
         health != null &&
         health.IsDead;
 
     public bool IsCollected =>
         isCollected;
+
+    public string CurrentBehaviour =>
+        currentBehaviour;
 
     private void Awake()
     {
@@ -41,8 +46,17 @@ public class BoidAgent : MonoBehaviour
 
     private void Update()
     {
-        if (IsDead || IsCollected)
+        if (IsDead)
+        {
+            currentBehaviour = "Dead";
             return;
+        }
+
+        if (IsCollected)
+        {
+            currentBehaviour = "Collected";
+            return;
+        }
 
         InterestObject interest =
             FindNearbyInterestObject();
@@ -56,6 +70,8 @@ public class BoidAgent : MonoBehaviour
 
             if (distance <= interactionDistance)
             {
+                currentBehaviour = "Arrive";
+
                 interactionTimer +=
                     Time.deltaTime;
 
@@ -70,6 +86,8 @@ public class BoidAgent : MonoBehaviour
 
                 return;
             }
+
+            currentBehaviour = "Arrive";
 
             Vector3 arriveMovement =
                 arrive.GetDirection(
@@ -88,6 +106,15 @@ public class BoidAgent : MonoBehaviour
             }
 
             return;
+        }
+
+        if (flocking.IsEvading())
+        {
+            currentBehaviour = "Evade";
+        }
+        else
+        {
+            currentBehaviour = "Flocking";
         }
 
         Vector3 movement =
@@ -118,6 +145,8 @@ public class BoidAgent : MonoBehaviour
         {
             flocking.enabled = false;
 
+            currentBehaviour = "Dead";
+
             Debug.Log(
                 name +
                 " ha muerto.");
@@ -132,6 +161,8 @@ public class BoidAgent : MonoBehaviour
         isCollected = true;
 
         flocking.enabled = false;
+
+        currentBehaviour = "Collected";
 
         SetVisible(false);
 
@@ -153,6 +184,8 @@ public class BoidAgent : MonoBehaviour
         health.ResetHealth();
 
         isCollected = false;
+
+        currentBehaviour = "Flocking";
 
         SetVisible(true);
 

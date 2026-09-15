@@ -49,6 +49,17 @@ public class BoidFlocking : MonoBehaviour
             cohesion * cohesionWeight;
     }
 
+    public bool IsEvading()
+    {
+        Collider[] hunterHits =
+            Physics.OverlapSphere(
+                transform.position,
+                hunterRadius,
+                hunterLayer);
+
+        return hunterHits.Length > 0;
+    }
+
     private BoidAgent[] FindNeighbours()
     {
         Collider[] hits =

@@ -4,6 +4,7 @@ public class AttackState : State
 {
     private FSMAgent agent;
     private BoidAgent target;
+    private HunterAttackVisual attackVisual;
 
     public AttackState(
         FSMAgent agent,
@@ -11,13 +12,26 @@ public class AttackState : State
         : base(stateMachine)
     {
         this.agent = agent;
+
+        attackVisual =
+            agent.GetComponentInChildren<HunterAttackVisual>();
     }
 
     public override void Enter()
     {
         target = FindTarget();
 
-        Debug.Log("Hunter: Attack");
+        if (target != null)
+        {
+            Debug.Log(
+                "Hunter: Attack -> " +
+                target.name);
+        }
+        else
+        {
+            StateMachine.ChangeState(
+                PoliceStates.Patrol);
+        }
     }
 
     public override void Exit()
@@ -46,7 +60,7 @@ public class AttackState : State
                 target.transform.position);
 
         if (distance >
-            agent.PerceptionRadius)
+            agent.AttackExitRadius)
         {
             StateMachine.ChangeState(
                 PoliceStates.Patrol);
@@ -86,10 +100,15 @@ public class AttackState : State
             direction.normalized *
             agent.Speed *
             Time.deltaTime;
+
+        agent.transform.forward =
+            direction.normalized;
     }
 
     private void PerformMeleeAttack()
     {
+        FaceTarget();
+
         if (!agent.CanAttack())
             return;
 
@@ -99,6 +118,12 @@ public class AttackState : State
         target.TakeDamage(
             agent.AttackDamage);
 
+        if (attackVisual != null)
+        {
+            attackVisual.ShowAttackLine(
+                target.transform.position);
+        }
+
         agent.ResetAttackTimer();
 
         StateMachine.ChangeState(
@@ -107,6 +132,8 @@ public class AttackState : State
 
     private void PerformRangedAttack()
     {
+        FaceTarget();
+
         if (!agent.CanAttack())
             return;
 
@@ -116,10 +143,35 @@ public class AttackState : State
         target.TakeDamage(
             agent.AttackDamage);
 
+        if (attackVisual != null)
+        {
+            attackVisual.ShowAttackLine(
+                target.transform.position);
+        }
+
         agent.ResetAttackTimer();
 
         StateMachine.ChangeState(
             PoliceStates.Patrol);
+    }
+
+    private void FaceTarget()
+    {
+        if (target == null)
+            return;
+
+        Vector3 direction =
+            target.transform.position -
+            agent.transform.position;
+
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude <=
+            0.01f)
+            return;
+
+        agent.transform.forward =
+            direction.normalized;
     }
 
     private BoidAgent FindTarget()
@@ -129,6 +181,12 @@ public class AttackState : State
                 agent.transform.position,
                 agent.PerceptionRadius,
                 agent.BoidLayer);
+
+        BoidAgent closest =
+            null;
+
+        float closestDistance =
+            Mathf.Infinity;
 
         foreach (Collider hit in hits)
         {
@@ -142,9 +200,21 @@ public class AttackState : State
                 boid.IsCollected)
                 continue;
 
-            return boid;
+            float distance =
+                Vector3.Distance(
+                    agent.transform.position,
+                    boid.transform.position);
+
+            if (distance < closestDistance)
+            {
+                closest =
+                    boid;
+
+                closestDistance =
+                    distance;
+            }
         }
 
-        return null;
+        return closest;
     }
 }

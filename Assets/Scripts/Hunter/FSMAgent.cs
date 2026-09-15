@@ -18,6 +18,7 @@ public class FSMAgent : MonoBehaviour
 
     [Header("Perception")]
     [SerializeField] private float perceptionRadius = 15f;
+    [SerializeField] private float attackExitRadius = 17f;
     [SerializeField] private LayerMask boidLayer;
 
     [Header("Attack")]
@@ -44,6 +45,7 @@ public class FSMAgent : MonoBehaviour
 
     public float Speed => speed;
     public float PerceptionRadius => perceptionRadius;
+    public float AttackExitRadius => attackExitRadius;
     public float TBA => tba;
     public float RangeAttackRadius => rangeAttackRadius;
     public float MeleeAttackRadius => meleeAttackRadius;

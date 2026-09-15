@@ -87,6 +87,9 @@ public class PatrolState : State
             direction.normalized *
             agent.Speed *
             Time.deltaTime;
+
+        data.transform.forward =
+            direction.normalized;
     }
 }
 

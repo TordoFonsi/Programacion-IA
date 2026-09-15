@@ -6,6 +6,19 @@ public class BoidAgent : MonoBehaviour
     [SerializeField] private float speed = 5f;
     [SerializeField] private float respawnTime = 5f;
 
+    [Header("Movement Area")]
+    [SerializeField] private Transform movementArea;
+    [SerializeField]
+    private Vector3 movementAreaSize =
+        new Vector3(25f, 0f, 25f);
+
+    [Header("Recovery")]
+    [SerializeField] private float recoveryRadius = 12f;
+
+    [Header("Border Avoidance")]
+    [SerializeField] private float borderAvoidanceDistance = 3f;
+    [SerializeField] private float borderAvoidanceWeight = 3f;
+
     [Header("Interest")]
     [SerializeField] private float interactionDistance = 1.5f;
     [SerializeField] private int interactionDamage = 20;
@@ -18,6 +31,8 @@ public class BoidAgent : MonoBehaviour
     private Collider[] colliders;
     private bool isCollected;
     private float interactionTimer;
+
+    private Vector3 deathPosition;
 
     private string currentBehaviour = "Flocking";
 
@@ -105,6 +120,8 @@ public class BoidAgent : MonoBehaviour
                     arriveMovement.normalized;
             }
 
+            KeepInsideMovementArea();
+
             return;
         }
 
@@ -120,6 +137,19 @@ public class BoidAgent : MonoBehaviour
         Vector3 movement =
             flocking.GetMovement();
 
+        Vector3 borderMovement =
+            GetBorderAvoidance();
+
+        movement +=
+            borderMovement *
+            borderAvoidanceWeight;
+
+        if (movement.sqrMagnitude <= 0.01f)
+        {
+            movement =
+                GetRecoveryMovement();
+        }
+
         if (movement.sqrMagnitude <= 0.01f)
             return;
 
@@ -132,6 +162,8 @@ public class BoidAgent : MonoBehaviour
 
         transform.forward =
             movement.normalized;
+
+        KeepInsideMovementArea();
     }
 
     public void TakeDamage(int damage)
@@ -143,6 +175,9 @@ public class BoidAgent : MonoBehaviour
 
         if (IsDead)
         {
+            deathPosition =
+                transform.position;
+
             flocking.enabled = false;
 
             currentBehaviour = "Dead";
@@ -176,10 +211,7 @@ public class BoidAgent : MonoBehaviour
             respawnTime);
 
         transform.position =
-            new Vector3(
-                Random.Range(-15f, 15f),
-                transform.position.y,
-                Random.Range(-15f, 15f));
+            deathPosition;
 
         health.ResetHealth();
 
@@ -190,6 +222,178 @@ public class BoidAgent : MonoBehaviour
         SetVisible(true);
 
         flocking.enabled = true;
+    }
+
+    private Vector3 GetRecoveryMovement()
+    {
+        Collider[] hits =
+            Physics.OverlapSphere(
+                transform.position,
+                recoveryRadius);
+
+        Vector3 center =
+            Vector3.zero;
+
+        int count = 0;
+
+        foreach (Collider hit in hits)
+        {
+            BoidAgent boid =
+                hit.GetComponent<BoidAgent>();
+
+            if (boid == null)
+                continue;
+
+            if (boid == this)
+                continue;
+
+            if (boid.IsDead ||
+                boid.IsCollected)
+                continue;
+
+            center +=
+                boid.transform.position;
+
+            count++;
+        }
+
+        if (count == 0)
+            return Vector3.zero;
+
+        center /=
+            count;
+
+        Vector3 direction =
+            center -
+            transform.position;
+
+        direction.y = 0f;
+
+        return direction;
+    }
+
+    private Vector3 GetBorderAvoidance()
+    {
+        if (movementArea == null)
+            return Vector3.zero;
+
+        Vector3 center =
+            movementArea.position;
+
+        Vector3 position =
+            transform.position;
+
+        float minX =
+            center.x -
+            movementAreaSize.x / 2f;
+
+        float maxX =
+            center.x +
+            movementAreaSize.x / 2f;
+
+        float minZ =
+            center.z -
+            movementAreaSize.z / 2f;
+
+        float maxZ =
+            center.z +
+            movementAreaSize.z / 2f;
+
+        Vector3 direction =
+            Vector3.zero;
+
+        if (position.x - minX <
+            borderAvoidanceDistance)
+        {
+            float strength =
+                1f -
+                (position.x - minX) /
+                borderAvoidanceDistance;
+
+            direction.x +=
+                strength;
+        }
+
+        if (maxX - position.x <
+            borderAvoidanceDistance)
+        {
+            float strength =
+                1f -
+                (maxX - position.x) /
+                borderAvoidanceDistance;
+
+            direction.x -=
+                strength;
+        }
+
+        if (position.z - minZ <
+            borderAvoidanceDistance)
+        {
+            float strength =
+                1f -
+                (position.z - minZ) /
+                borderAvoidanceDistance;
+
+            direction.z +=
+                strength;
+        }
+
+        if (maxZ - position.z <
+            borderAvoidanceDistance)
+        {
+            float strength =
+                1f -
+                (maxZ - position.z) /
+                borderAvoidanceDistance;
+
+            direction.z -=
+                strength;
+        }
+
+        return direction;
+    }
+
+    private void KeepInsideMovementArea()
+    {
+        if (movementArea == null)
+            return;
+
+        Vector3 center =
+            movementArea.position;
+
+        Vector3 position =
+            transform.position;
+
+        float minX =
+            center.x -
+            movementAreaSize.x / 2f;
+
+        float maxX =
+            center.x +
+            movementAreaSize.x / 2f;
+
+        float minZ =
+            center.z -
+            movementAreaSize.z / 2f;
+
+        float maxZ =
+            center.z +
+            movementAreaSize.z / 2f;
+
+        position.x =
+            Mathf.Clamp(
+                position.x,
+                minX,
+                maxX);
+
+        position.z =
+            Mathf.Clamp(
+                position.z,
+                minZ,
+                maxZ);
+
+        transform.position =
+            position;
     }
 
     private void SetVisible(bool visible)

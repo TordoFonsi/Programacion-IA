@@ -26,6 +26,31 @@ public class PatrolState : State
 
     public override void Update()
     {
+        if (agent.HasDeadBoidInRange())
+        {
+            StateMachine.ChangeState(
+                PoliceStates.Gather);
+
+            return;
+        }
+
+        if (agent.CanAttack() &&
+            agent.HasBoidInRange())
+        {
+            StateMachine.ChangeState(
+                PoliceStates.Attack);
+
+            return;
+        }
+
+        if (agent.CanSpawnInterestObject())
+        {
+            GameObject.Instantiate(
+                agent.InterestObjectPrefab,
+                agent.GetRandomSpawnPosition(),
+                Quaternion.identity);
+        }
+
         Patrol();
     }
 

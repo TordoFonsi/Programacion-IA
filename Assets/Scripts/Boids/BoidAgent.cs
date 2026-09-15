@@ -1,8 +1,10 @@
+using System.Collections;
 using UnityEngine;
 
 public class BoidAgent : MonoBehaviour
 {
     [SerializeField] private float speed = 5f;
+    [SerializeField] private float respawnTime = 5f;
 
     [Header("Interest")]
     [SerializeField] private float interactionDistance = 1.5f;
@@ -12,22 +14,34 @@ public class BoidAgent : MonoBehaviour
     private BoidFlocking flocking;
     private BoidHealth health;
     private Arrive arrive;
+    private Renderer[] renderers;
+    private Collider[] colliders;
+    private bool isCollected;
     private float interactionTimer;
 
     public bool IsDead =>
         health != null &&
         health.IsDead;
 
+    public bool IsCollected =>
+        isCollected;
+
     private void Awake()
     {
         flocking = GetComponent<BoidFlocking>();
         health = GetComponent<BoidHealth>();
         arrive = GetComponent<Arrive>();
+
+        renderers =
+            GetComponentsInChildren<Renderer>();
+
+        colliders =
+            GetComponentsInChildren<Collider>();
     }
 
     private void Update()
     {
-        if (IsDead)
+        if (IsDead || IsCollected)
             return;
 
         InterestObject interest =
@@ -95,7 +109,7 @@ public class BoidAgent : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
-        if (IsDead)
+        if (IsDead || IsCollected)
             return;
 
         health.TakeDamage(damage);
@@ -108,6 +122,50 @@ public class BoidAgent : MonoBehaviour
                 name +
                 " ha muerto.");
         }
+    }
+
+    public void Collected()
+    {
+        if (isCollected)
+            return;
+
+        isCollected = true;
+
+        flocking.enabled = false;
+
+        SetVisible(false);
+
+        StartCoroutine(
+            RespawnRoutine());
+    }
+
+    private IEnumerator RespawnRoutine()
+    {
+        yield return new WaitForSeconds(
+            respawnTime);
+
+        transform.position =
+            new Vector3(
+                Random.Range(-15f, 15f),
+                transform.position.y,
+                Random.Range(-15f, 15f));
+
+        health.ResetHealth();
+
+        isCollected = false;
+
+        SetVisible(true);
+
+        flocking.enabled = true;
+    }
+
+    private void SetVisible(bool visible)
+    {
+        foreach (Renderer renderer in renderers)
+            renderer.enabled = visible;
+
+        foreach (Collider collider in colliders)
+            collider.enabled = visible;
     }
 
     private InterestObject FindNearbyInterestObject()

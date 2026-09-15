@@ -183,8 +183,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3bfa2d79422b404da91d765f2f39f9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidFlocking
-  neighbourRadius: 8
-  separationRadius: 3
+  neighbourRadius: 4
+  separationRadius: 2
   boidLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -208,7 +208,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5e14cd71ea30ce45ab8f0bb7c5a6fa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
-  speed: 5
+  speed: 2
+  respawnTime: 5
   interactionDistance: 1.5
   interactionDamage: 20
   interactionInterval: 1
@@ -359,10 +360,20 @@ MonoBehaviour:
     - {fileID: 465301831}
     transform: {fileID: 93152811}
     waypointCheckDistance: 1
+  perceptionRadius: 20
+  boidLayer:
+    serializedVersion: 2
+    m_Bits: 320
   tba: 3
   rangeAttackRadius: 10
   meleeAttackRadius: 2
   attackDamage: 25
+  gatherTime: 2
+  interestObjectPrefab: {fileID: 2183602676100638328, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+  interestSpawnInterval: 8
+  maxInterestObjects: 5
+  spawnArea: {fileID: 503507068}
+  spawnAreaSize: {x: 20, y: 0, z: 20}
 --- !u!136 &93152808
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -553,8 +564,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3bfa2d79422b404da91d765f2f39f9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidFlocking
-  neighbourRadius: 8
-  separationRadius: 3
+  neighbourRadius: 4
+  separationRadius: 2
   boidLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -578,7 +589,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5e14cd71ea30ce45ab8f0bb7c5a6fa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
-  speed: 5
+  speed: 2
+  respawnTime: 5
   interactionDistance: 1.5
   interactionDamage: 20
   interactionInterval: 1
@@ -777,7 +789,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5e14cd71ea30ce45ab8f0bb7c5a6fa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
-  speed: 5
+  speed: 2
+  respawnTime: 5
   interactionDistance: 1.5
   interactionDamage: 20
   interactionInterval: 1
@@ -1045,6 +1058,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1179770632}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &503507067
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 503507068}
+  m_Layer: 0
+  m_Name: SpawnArea
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &503507068
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 503507067}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 9.86, y: 0, z: 0.02}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &836363275
 GameObject:
   m_ObjectHideFlags: 0
@@ -1201,8 +1245,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3bfa2d79422b404da91d765f2f39f9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidFlocking
-  neighbourRadius: 8
-  separationRadius: 3
+  neighbourRadius: 4
+  separationRadius: 2
   boidLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -1226,7 +1270,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5e14cd71ea30ce45ab8f0bb7c5a6fa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
-  speed: 5
+  speed: 2
+  respawnTime: 5
   interactionDistance: 1.5
   interactionDamage: 20
   interactionInterval: 1
@@ -1503,8 +1548,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3bfa2d79422b404da91d765f2f39f9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidFlocking
-  neighbourRadius: 8
-  separationRadius: 3
+  neighbourRadius: 4
+  separationRadius: 2
   boidLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -1528,7 +1573,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5e14cd71ea30ce45ab8f0bb7c5a6fa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
-  speed: 5
+  speed: 2
+  respawnTime: 5
   interactionDistance: 1.5
   interactionDamage: 20
   interactionInterval: 1
@@ -1702,8 +1748,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3bfa2d79422b404da91d765f2f39f9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidFlocking
-  neighbourRadius: 8
-  separationRadius: 3
+  neighbourRadius: 4
+  separationRadius: 2
   boidLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -1727,7 +1773,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5e14cd71ea30ce45ab8f0bb7c5a6fa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
-  speed: 5
+  speed: 2
+  respawnTime: 5
   interactionDistance: 1.5
   interactionDamage: 20
   interactionInterval: 1
@@ -1868,63 +1915,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1179770632}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &5224137507067010356
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 2183602676100638328, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_Name
-      value: InterestObject
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 12.6185
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -9.30421
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1934,4 +1924,4 @@ SceneRoots:
   - {fileID: 93152811}
   - {fileID: 1179770632}
   - {fileID: 1118580011}
-  - {fileID: 5224137507067010356}
+  - {fileID: 503507068}

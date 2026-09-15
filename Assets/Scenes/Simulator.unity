@@ -209,6 +209,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   speed: 5
+  interactionDistance: 1.5
+  interactionDamage: 20
+  interactionInterval: 1
 --- !u!65 &48062177
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -576,6 +579,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   speed: 5
+  interactionDistance: 1.5
+  interactionDamage: 20
+  interactionInterval: 1
 --- !u!65 &369344491
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -772,6 +778,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   speed: 5
+  interactionDistance: 1.5
+  interactionDamage: 20
+  interactionInterval: 1
 --- !u!65 &387914384
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1218,6 +1227,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   speed: 5
+  interactionDistance: 1.5
+  interactionDamage: 20
+  interactionInterval: 1
 --- !u!65 &895817078
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1517,6 +1529,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   speed: 5
+  interactionDistance: 1.5
+  interactionDamage: 20
+  interactionInterval: 1
 --- !u!65 &1213219961
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1713,6 +1728,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   speed: 5
+  interactionDistance: 1.5
+  interactionDamage: 20
+  interactionInterval: 1
 --- !u!65 &1562805956
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1850,6 +1868,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1179770632}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &5224137507067010356
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2183602676100638328, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_Name
+      value: InterestObject
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 12.6185
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -9.30421
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4156943562457594778, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: dd4da5fe0288f1f4bb50224d5e3ceb7c, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1859,3 +1934,4 @@ SceneRoots:
   - {fileID: 93152811}
   - {fileID: 1179770632}
   - {fileID: 1118580011}
+  - {fileID: 5224137507067010356}

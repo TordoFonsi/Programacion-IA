@@ -213,7 +213,9 @@ MonoBehaviour:
   movementArea: {fileID: 172809077}
   movementAreaSize: {x: 25, y: 0, z: 25}
   recoveryRadius: 12
-  interactionDistance: 1.5
+  borderAvoidanceDistance: 3
+  borderAvoidanceWeight: 3
+  interactionDistance: 3
   interactionDamage: 20
   interactionInterval: 1
 --- !u!65 &48062177
@@ -364,6 +366,7 @@ MonoBehaviour:
     transform: {fileID: 93152811}
     waypointCheckDistance: 1
   perceptionRadius: 10
+  attackExitRadius: 17
   boidLayer:
     serializedVersion: 2
     m_Bits: 320
@@ -629,7 +632,9 @@ MonoBehaviour:
   movementArea: {fileID: 172809077}
   movementAreaSize: {x: 25, y: 0, z: 25}
   recoveryRadius: 12
-  interactionDistance: 1.5
+  borderAvoidanceDistance: 3
+  borderAvoidanceWeight: 3
+  interactionDistance: 3
   interactionDamage: 20
   interactionInterval: 1
 --- !u!65 &369344491
@@ -832,7 +837,9 @@ MonoBehaviour:
   movementArea: {fileID: 172809077}
   movementAreaSize: {x: 25, y: 0, z: 25}
   recoveryRadius: 12
-  interactionDistance: 1.5
+  borderAvoidanceDistance: 3
+  borderAvoidanceWeight: 3
+  interactionDistance: 3
   interactionDamage: 20
   interactionInterval: 1
 --- !u!65 &387914384
@@ -1635,7 +1642,9 @@ MonoBehaviour:
   movementArea: {fileID: 172809077}
   movementAreaSize: {x: 25, y: 0, z: 25}
   recoveryRadius: 12
-  interactionDistance: 1.5
+  borderAvoidanceDistance: 3
+  borderAvoidanceWeight: 3
+  interactionDistance: 3
   interactionDamage: 20
   interactionInterval: 1
 --- !u!65 &895817078
@@ -1941,7 +1950,9 @@ MonoBehaviour:
   movementArea: {fileID: 172809077}
   movementAreaSize: {x: 25, y: 0, z: 25}
   recoveryRadius: 12
-  interactionDistance: 1.5
+  borderAvoidanceDistance: 3
+  borderAvoidanceWeight: 3
+  interactionDistance: 3
   interactionDamage: 20
   interactionInterval: 1
 --- !u!65 &1213219961
@@ -2144,7 +2155,9 @@ MonoBehaviour:
   movementArea: {fileID: 172809077}
   movementAreaSize: {x: 25, y: 0, z: 25}
   recoveryRadius: 12
-  interactionDistance: 1.5
+  borderAvoidanceDistance: 3
+  borderAvoidanceWeight: 3
+  interactionDistance: 3
   interactionDamage: 20
   interactionInterval: 1
 --- !u!65 &1562805956

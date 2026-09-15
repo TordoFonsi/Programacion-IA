@@ -151,7 +151,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c806d73d466aa8c468ab4e74e6d94dbe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FSMAgent
-  speed: 3
+  speed: 7
   dataPatrol:
     wayPoints:
     - {fileID: 1106812575}
@@ -160,6 +160,10 @@ MonoBehaviour:
     - {fileID: 465301831}
     transform: {fileID: 93152811}
     waypointCheckDistance: 1
+  tba: 3
+  rangeAttackRadius: 10
+  meleeAttackRadius: 2
+  attackDamage: 25
 --- !u!136 &93152808
 CapsuleCollider:
   m_ObjectHideFlags: 0

@@ -12,8 +12,25 @@ public class BoidFlocking : MonoBehaviour
     [SerializeField] private float alignmentWeight = 1f;
     [SerializeField] private float cohesionWeight = 1f;
 
+    [Header("Hunter")]
+    [SerializeField] private float hunterRadius = 10f;
+    [SerializeField] private LayerMask hunterLayer;
+    [SerializeField] private Evade evade;
+
     public Vector3 GetMovement()
     {
+        Collider[] hunterHits =
+            Physics.OverlapSphere(
+                transform.position,
+                hunterRadius,
+                hunterLayer);
+
+        if (hunterHits.Length > 0)
+        {
+            return evade.GetDirection(
+                hunterHits[0].transform.position);
+        }
+
         BoidAgent[] neighbours =
             FindNeighbours();
 

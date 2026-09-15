@@ -134,7 +134,9 @@ GameObject:
   - component: {fileID: 48062176}
   - component: {fileID: 48062175}
   - component: {fileID: 48062174}
-  m_Layer: 0
+  - component: {fileID: 48062181}
+  - component: {fileID: 48062180}
+  m_Layer: 6
   m_Name: Boid_06
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -185,10 +187,15 @@ MonoBehaviour:
   separationRadius: 3
   boidLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   separationWeight: 2
   alignmentWeight: 1
   cohesionWeight: 1
+  hunterRadius: 10
+  hunterLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  evade: {fileID: 48062180}
 --- !u!114 &48062176
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -280,6 +287,34 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 48062172}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &48062180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 48062172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db3bf63f3b14cce4bb02abcf01a14ba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Evade
+  maxSpeed: 6
+--- !u!114 &48062181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 48062172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f77be2e6bed8f754d82fcd9549fcdeca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Arrive
+  maxSpeed: 5
+  slowRadius: 5
+  stopRadius: 1
 --- !u!1 &93152806
 GameObject:
   m_ObjectHideFlags: 0
@@ -293,7 +328,7 @@ GameObject:
   - component: {fileID: 93152809}
   - component: {fileID: 93152808}
   - component: {fileID: 93152807}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Hunter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -466,7 +501,9 @@ GameObject:
   - component: {fileID: 369344490}
   - component: {fileID: 369344489}
   - component: {fileID: 369344488}
-  m_Layer: 0
+  - component: {fileID: 369344495}
+  - component: {fileID: 369344494}
+  m_Layer: 6
   m_Name: Boid_04
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -517,10 +554,15 @@ MonoBehaviour:
   separationRadius: 3
   boidLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   separationWeight: 2
   alignmentWeight: 1
   cohesionWeight: 1
+  hunterRadius: 10
+  hunterLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  evade: {fileID: 369344494}
 --- !u!114 &369344490
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -612,6 +654,34 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 369344486}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &369344494
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 369344486}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db3bf63f3b14cce4bb02abcf01a14ba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Evade
+  maxSpeed: 6
+--- !u!114 &369344495
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 369344486}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f77be2e6bed8f754d82fcd9549fcdeca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Arrive
+  maxSpeed: 5
+  slowRadius: 5
+  stopRadius: 1
 --- !u!1 &387914379
 GameObject:
   m_ObjectHideFlags: 0
@@ -627,7 +697,9 @@ GameObject:
   - component: {fileID: 387914383}
   - component: {fileID: 387914382}
   - component: {fileID: 387914381}
-  m_Layer: 0
+  - component: {fileID: 387914388}
+  - component: {fileID: 387914387}
+  m_Layer: 6
   m_Name: Boid_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -674,14 +746,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3bfa2d79422b404da91d765f2f39f9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidFlocking
-  neighbourRadius: 8
-  separationRadius: 3
+  neighbourRadius: 4
+  separationRadius: 2
   boidLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   separationWeight: 2
   alignmentWeight: 1
   cohesionWeight: 1
+  hunterRadius: 10
+  hunterLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  evade: {fileID: 387914387}
 --- !u!114 &387914383
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -773,6 +850,34 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 387914379}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &387914387
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 387914379}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db3bf63f3b14cce4bb02abcf01a14ba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Evade
+  maxSpeed: 6
+--- !u!114 &387914388
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 387914379}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f77be2e6bed8f754d82fcd9549fcdeca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Arrive
+  maxSpeed: 5
+  slowRadius: 5
+  stopRadius: 1
 --- !u!1 &418692115
 GameObject:
   m_ObjectHideFlags: 0
@@ -1038,7 +1143,9 @@ GameObject:
   - component: {fileID: 895817077}
   - component: {fileID: 895817076}
   - component: {fileID: 895817075}
-  m_Layer: 0
+  - component: {fileID: 895817082}
+  - component: {fileID: 895817081}
+  m_Layer: 6
   m_Name: Boid_03
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1089,10 +1196,15 @@ MonoBehaviour:
   separationRadius: 3
   boidLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   separationWeight: 2
   alignmentWeight: 1
   cohesionWeight: 1
+  hunterRadius: 10
+  hunterLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  evade: {fileID: 895817081}
 --- !u!114 &895817077
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1184,6 +1296,34 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 895817073}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &895817081
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 895817073}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db3bf63f3b14cce4bb02abcf01a14ba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Evade
+  maxSpeed: 6
+--- !u!114 &895817082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 895817073}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f77be2e6bed8f754d82fcd9549fcdeca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Arrive
+  maxSpeed: 5
+  slowRadius: 5
+  stopRadius: 1
 --- !u!1 &1106812574
 GameObject:
   m_ObjectHideFlags: 0
@@ -1302,7 +1442,9 @@ GameObject:
   - component: {fileID: 1213219960}
   - component: {fileID: 1213219959}
   - component: {fileID: 1213219958}
-  m_Layer: 0
+  - component: {fileID: 1213219965}
+  - component: {fileID: 1213219964}
+  m_Layer: 6
   m_Name: Boid_05
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1353,10 +1495,15 @@ MonoBehaviour:
   separationRadius: 3
   boidLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   separationWeight: 2
   alignmentWeight: 1
   cohesionWeight: 1
+  hunterRadius: 10
+  hunterLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  evade: {fileID: 1213219964}
 --- !u!114 &1213219960
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1448,6 +1595,34 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1213219956}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1213219964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1213219956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db3bf63f3b14cce4bb02abcf01a14ba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Evade
+  maxSpeed: 6
+--- !u!114 &1213219965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1213219956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f77be2e6bed8f754d82fcd9549fcdeca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Arrive
+  maxSpeed: 5
+  slowRadius: 5
+  stopRadius: 1
 --- !u!1 &1562805951
 GameObject:
   m_ObjectHideFlags: 0
@@ -1463,7 +1638,9 @@ GameObject:
   - component: {fileID: 1562805955}
   - component: {fileID: 1562805954}
   - component: {fileID: 1562805953}
-  m_Layer: 0
+  - component: {fileID: 1562805960}
+  - component: {fileID: 1562805959}
+  m_Layer: 6
   m_Name: Boid_02
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1514,10 +1691,15 @@ MonoBehaviour:
   separationRadius: 3
   boidLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   separationWeight: 2
   alignmentWeight: 1
   cohesionWeight: 1
+  hunterRadius: 10
+  hunterLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  evade: {fileID: 1562805959}
 --- !u!114 &1562805955
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1609,6 +1791,34 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1562805951}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1562805959
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1562805951}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db3bf63f3b14cce4bb02abcf01a14ba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Evade
+  maxSpeed: 6
+--- !u!114 &1562805960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1562805951}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f77be2e6bed8f754d82fcd9549fcdeca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Arrive
+  maxSpeed: 5
+  slowRadius: 5
+  stopRadius: 1
 --- !u!1 &1804430984
 GameObject:
   m_ObjectHideFlags: 0

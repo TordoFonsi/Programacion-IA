@@ -40,6 +40,9 @@ public static class LevelBuilder
         BuildWalls(cells, root, wall);
         BuildZones(root);
 
+        Graph graph = CreateGraph(root);
+        CreatePathTest(root, graph);
+
         CreateCamera();
         CreateLight();
 
@@ -123,12 +126,53 @@ public static class LevelBuilder
         if (collider) go.AddComponent<MeshCollider>().sharedMesh = mesh;
     }
 
+    private static Graph CreateGraph(Transform parent)
+    {
+        GameObject go = new GameObject("Graph");
+        go.transform.SetParent(parent, false);
+        return go.AddComponent<Graph>();
+    }
+
+    private static void CreatePathTest(Transform parent, Graph graph)
+    {
+        GameObject start = new GameObject("PathStart");
+        start.transform.SetParent(parent, false);
+        start.transform.position = new Vector3(6.5f, 0f, 30f);
+
+        GameObject goal = new GameObject("PathGoal");
+        goal.transform.SetParent(parent, false);
+        goal.transform.position = new Vector3(93.5f, 0f, 30f);
+
+        GameObject agentObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        agentObject.name = "PathTestAgent";
+        agentObject.transform.SetParent(parent, false);
+        agentObject.transform.position = start.transform.position + Vector3.up;
+        Object.DestroyImmediate(agentObject.GetComponent<Collider>());
+        agentObject.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("PathAgent", new Color(0.15f, 0.85f, 1f));
+
+        LineRenderer line = agentObject.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.widthMultiplier = 0.25f;
+        line.numCapVertices = 2;
+        line.sharedMaterial = CreateMaterial("PathLine", new Color(0.2f, 1f, 0.5f), "Universal Render Pipeline/Unlit");
+        line.startColor = new Color(0.2f, 1f, 0.5f);
+        line.endColor = new Color(1f, 0.85f, 0.2f);
+
+        PathTestAgent agent = agentObject.AddComponent<PathTestAgent>();
+        agent.Configure(graph, line, start.transform, goal.transform);
+
+        GameObject visualizerObject = new GameObject("GraphVisualizer");
+        visualizerObject.transform.SetParent(parent, false);
+        GraphVisualizer visualizer = visualizerObject.AddComponent<GraphVisualizer>();
+        visualizer.Configure(graph, agent);
+    }
+
     private static void CreateCamera()
     {
         GameObject go = new GameObject("Main Camera");
         go.tag = "MainCamera";
-        go.transform.position = new Vector3(50f, 90f, -40f);
-        go.transform.rotation = Quaternion.Euler(52f, 0f, 0f);
+        go.transform.position = new Vector3(50f, 58f, -18f);
+        go.transform.rotation = Quaternion.Euler(50f, 0f, 0f);
 
         Camera camera = go.AddComponent<Camera>();
         camera.fieldOfView = 50f;
@@ -145,14 +189,14 @@ public static class LevelBuilder
         light.intensity = 1.2f;
     }
 
-    private static Material CreateMaterial(string name, Color color)
+    private static Material CreateMaterial(string name, Color color, string shaderName = "Universal Render Pipeline/Lit")
     {
         string path = $"{MaterialFolder}/{name}.mat";
         Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
 
         if (material == null)
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            Shader shader = Shader.Find(shaderName);
             if (shader == null) shader = Shader.Find("Standard");
             material = new Material(shader);
             AssetDatabase.CreateAsset(material, path);
@@ -160,7 +204,7 @@ public static class LevelBuilder
 
         material.SetColor("_BaseColor", color);
         material.SetColor("_Color", color);
-        material.SetFloat("_Smoothness", 0.05f);
+        if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0.05f);
         EditorUtility.SetDirty(material);
         return material;
     }

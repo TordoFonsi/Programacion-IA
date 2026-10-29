@@ -174,9 +174,11 @@ public static class LevelBuilder
         go.transform.SetParent(parent, false);
 
         Material prey = CreateMaterial("Prey", new Color(0.97f, 0.96f, 0.92f));
+        Material hunter = CreateMaterial("Hunter", new Color(0.92f, 0.25f, 0.3f));
+        Material hunterPath = CreateMaterial("HunterPath", new Color(1f, 0.6f, 0.2f), "Universal Render Pipeline/Unlit");
 
         Parcial2Bootstrap bootstrap = go.AddComponent<Parcial2Bootstrap>();
-        bootstrap.Configure(graph, prey);
+        bootstrap.Configure(graph, prey, hunter, hunterPath);
     }
 
     private static void CreateCamera()

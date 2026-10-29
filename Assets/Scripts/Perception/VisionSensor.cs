@@ -36,6 +36,11 @@ public class VisionSensor : MonoBehaviour
 
     public bool Scan()
     {
+        return Scan(Time.deltaTime);
+    }
+
+    public bool Scan(float deltaTime)
+    {
         PreyAgent visible = FindVisible();
 
         if (visible != null)
@@ -56,7 +61,7 @@ public class VisionSensor : MonoBehaviour
             return false;
         }
 
-        memoryTimer -= Time.deltaTime;
+        memoryTimer -= deltaTime;
         if (memoryTimer > 0f) return true;
 
         target = null;

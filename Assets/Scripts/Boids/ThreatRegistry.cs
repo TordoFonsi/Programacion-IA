@@ -19,6 +19,11 @@ public static class ThreatRegistry
 
     public static Transform FindNearest(Vector3 position, float radius)
     {
+        return FindNearest(position, radius, null);
+    }
+
+    public static Transform FindNearest(Vector3 position, float radius, Transform ignore)
+    {
         Transform nearest = null;
         float best = radius * radius;
 
@@ -30,6 +35,8 @@ public static class ThreatRegistry
                 threats.RemoveAt(i);
                 continue;
             }
+
+            if (threat == ignore) continue;
 
             Vector3 offset = threat.position - position;
             offset.y = 0f;

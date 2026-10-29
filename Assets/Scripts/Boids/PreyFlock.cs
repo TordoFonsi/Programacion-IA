@@ -49,7 +49,11 @@ public class PreyFlock : MonoBehaviour
             go.transform.position = GetSpawnPosition();
 
             Collider collider = go.GetComponent<Collider>();
-            if (collider != null) Destroy(collider);
+            if (collider != null)
+            {
+                collider.enabled = false;
+                Destroy(collider);
+            }
 
             PreyAgent agent = go.AddComponent<PreyAgent>();
             agent.Configure(this, preyMaterial, new Color(0.97f, 0.96f, 0.92f), speed, force);

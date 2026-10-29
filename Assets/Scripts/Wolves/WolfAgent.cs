@@ -266,6 +266,12 @@ public class WolfAgent : SteeringAgent
             Mathf.FloorToInt(transform.position.x),
             Mathf.FloorToInt(transform.position.z));
 
+        if (graph != null)
+        {
+            Node node = graph.GetNode(cell);
+            if (node != null) return node.CellType == CellType.SafeZone;
+        }
+
         return LevelLayout.SafeZoneA.Contains(cell) || LevelLayout.SafeZoneB.Contains(cell);
     }
 

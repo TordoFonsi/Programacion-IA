@@ -44,13 +44,16 @@ public class HunterHud : MonoBehaviour
         if (!hunter.IsDead) state = hunter.IsEscaped ? "Escapó" : hunter.CurrentStateName;
 
         Vector3 last = hunter.LastKnownPosition;
+        string lastPosition = hunter.Vision != null && hunter.Vision.HasTarget
+            ? $"({last.x:0.0}, {last.z:0.0})"
+            : "(sin datos)";
 
         GUI.Box(new Rect(12f, 12f, 300f, 160f), GUIContent.none);
         GUI.Label(new Rect(24f, 20f, 280f, 22f), $"Estado: {state}", style);
         GUI.Label(new Rect(24f, 42f, 280f, 22f), $"Vida: {hunter.Health}", style);
         GUI.Label(new Rect(24f, 64f, 280f, 22f), $"Recolectados: {hunter.Collected}/{hunter.Goal}", style);
         GUI.Label(new Rect(24f, 86f, 280f, 22f), $"Detección: {detection}", style);
-        GUI.Label(new Rect(24f, 108f, 280f, 22f), $"Última posición: ({last.x:0.0}, {last.z:0.0})", style);
+        GUI.Label(new Rect(24f, 108f, 280f, 22f), $"Última posición: {lastPosition}", style);
         GUI.Label(new Rect(24f, 130f, 280f, 22f), $"Camino A*: {hunter.CurrentPath.Count} nodos", style);
     }
 }

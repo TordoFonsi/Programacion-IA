@@ -127,11 +127,13 @@ public class HunterAgent : SteeringAgent
     private void OnEnable()
     {
         ThreatRegistry.Register(transform);
+        HunterRegistry.Register(this);
     }
 
     private void OnDisable()
     {
         ThreatRegistry.Unregister(transform);
+        HunterRegistry.Unregister(this);
     }
 
     private void Update()

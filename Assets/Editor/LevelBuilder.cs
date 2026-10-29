@@ -42,6 +42,7 @@ public static class LevelBuilder
 
         Graph graph = CreateGraph(root);
         CreatePathTest(root, graph);
+        CreateBootstrap(root, graph);
 
         CreateCamera();
         CreateLight();
@@ -165,6 +166,17 @@ public static class LevelBuilder
         visualizerObject.transform.SetParent(parent, false);
         GraphVisualizer visualizer = visualizerObject.AddComponent<GraphVisualizer>();
         visualizer.Configure(graph, agent);
+    }
+
+    private static void CreateBootstrap(Transform parent, Graph graph)
+    {
+        GameObject go = new GameObject("Parcial2Bootstrap");
+        go.transform.SetParent(parent, false);
+
+        Material prey = CreateMaterial("Prey", new Color(0.97f, 0.96f, 0.92f));
+
+        Parcial2Bootstrap bootstrap = go.AddComponent<Parcial2Bootstrap>();
+        bootstrap.Configure(graph, prey);
     }
 
     private static void CreateCamera()

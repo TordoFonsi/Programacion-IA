@@ -41,7 +41,7 @@ public static class LevelBuilder
         BuildZones(root);
 
         Graph graph = CreateGraph(root);
-        CreatePathTest(root, graph);
+        CreateGraphVisualizer(root, graph);
         CreateBootstrap(root, graph);
 
         CreateCamera();
@@ -134,38 +134,13 @@ public static class LevelBuilder
         return go.AddComponent<Graph>();
     }
 
-    private static void CreatePathTest(Transform parent, Graph graph)
+    private static void CreateGraphVisualizer(Transform parent, Graph graph)
     {
-        GameObject start = new GameObject("PathStart");
-        start.transform.SetParent(parent, false);
-        start.transform.position = new Vector3(6.5f, 0f, 30f);
+        GameObject go = new GameObject("GraphVisualizer");
+        go.transform.SetParent(parent, false);
 
-        GameObject goal = new GameObject("PathGoal");
-        goal.transform.SetParent(parent, false);
-        goal.transform.position = new Vector3(93.5f, 0f, 30f);
-
-        GameObject agentObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        agentObject.name = "PathTestAgent";
-        agentObject.transform.SetParent(parent, false);
-        agentObject.transform.position = start.transform.position + Vector3.up;
-        Object.DestroyImmediate(agentObject.GetComponent<Collider>());
-        agentObject.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("PathAgent", new Color(0.15f, 0.85f, 1f));
-
-        LineRenderer line = agentObject.AddComponent<LineRenderer>();
-        line.useWorldSpace = true;
-        line.widthMultiplier = 0.25f;
-        line.numCapVertices = 2;
-        line.sharedMaterial = CreateMaterial("PathLine", new Color(0.2f, 1f, 0.5f), "Universal Render Pipeline/Unlit");
-        line.startColor = new Color(0.2f, 1f, 0.5f);
-        line.endColor = new Color(1f, 0.85f, 0.2f);
-
-        PathTestAgent agent = agentObject.AddComponent<PathTestAgent>();
-        agent.Configure(graph, line, start.transform, goal.transform);
-
-        GameObject visualizerObject = new GameObject("GraphVisualizer");
-        visualizerObject.transform.SetParent(parent, false);
-        GraphVisualizer visualizer = visualizerObject.AddComponent<GraphVisualizer>();
-        visualizer.Configure(graph, agent);
+        GraphVisualizer visualizer = go.AddComponent<GraphVisualizer>();
+        visualizer.Configure(graph);
     }
 
     private static void CreateBootstrap(Transform parent, Graph graph)

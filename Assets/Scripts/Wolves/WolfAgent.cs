@@ -299,6 +299,8 @@ public class WolfAgent : SteeringAgent
 
     private void OnDrawGizmos()
     {
+        if (!GizmoSettings.CombatRadii) return;
+
         Gizmos.color = new Color(1f, 0.55f, 0.1f, 0.5f);
         Gizmos.DrawWireSphere(transform.position, aggroRadius);
 

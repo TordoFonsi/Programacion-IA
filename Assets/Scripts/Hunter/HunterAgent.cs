@@ -470,6 +470,8 @@ public class HunterAgent : SteeringAgent
 
     private void OnDrawGizmos()
     {
+        if (!GizmoSettings.CombatRadii) return;
+
         Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.6f);
         Gizmos.DrawWireSphere(transform.position, attackRange);
 

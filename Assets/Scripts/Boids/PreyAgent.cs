@@ -164,6 +164,8 @@ public class PreyAgent : SteeringAgent
 
     private void OnDrawGizmos()
     {
+        if (!GizmoSettings.BoidRadii) return;
+
         Gizmos.color = new Color(0.2f, 0.85f, 1f, 0.35f);
         Gizmos.DrawWireSphere(transform.position, neighbourRadius);
 

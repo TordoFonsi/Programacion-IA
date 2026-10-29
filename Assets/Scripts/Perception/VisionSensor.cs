@@ -118,31 +118,43 @@ public class VisionSensor : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        Vector3 origin = EyePosition;
+        if (!GizmoSettings.VisionCones) return;
+
         Gizmos.color = alerted
-            ? new Color(1f, 0.25f, 0.2f, 0.9f)
-            : new Color(1f, 0.9f, 0.2f, 0.6f);
+            ? new Color(1f, 0.25f, 0.2f, 0.75f)
+            : new Color(1f, 0.9f, 0.2f, 0.35f);
 
-        Gizmos.DrawWireSphere(origin, range);
-
-        const int steps = 20;
+        const int steps = 16;
         float half = fieldOfView * 0.5f;
-        Vector3 previous = origin;
+        Vector3 previous = GroundPoint(-half);
 
-        for (int i = 0; i <= steps; i++)
+        for (int i = 1; i <= steps; i++)
         {
             float angle = -half + fieldOfView * i / steps;
-            Vector3 direction = Quaternion.Euler(0f, angle, 0f) * transform.forward;
-            Vector3 point = origin + direction * range;
+            Vector3 point = GroundPoint(angle);
 
-            Gizmos.DrawLine(origin, point);
-            if (i > 0) Gizmos.DrawLine(previous, point);
+            Gizmos.DrawLine(previous, point);
             previous = point;
         }
+
+        Gizmos.DrawLine(GroundOrigin, GroundPoint(-half));
+        Gizmos.DrawLine(GroundOrigin, GroundPoint(half));
 
         if (memoryTimer <= 0f) return;
 
         Gizmos.color = new Color(1f, 0.6f, 0.1f, 0.85f);
         Gizmos.DrawWireSphere(lastKnownPosition + Vector3.up * 0.2f, 0.8f);
+    }
+
+    private Vector3 GroundOrigin => new Vector3(transform.position.x, 0.05f, transform.position.z);
+
+    private Vector3 GroundPoint(float angle)
+    {
+        Vector3 direction = Quaternion.Euler(0f, angle, 0f) * transform.forward;
+        direction.y = 0f;
+
+        Vector3 point = GroundOrigin + direction.normalized * range;
+        point.y = 0.05f;
+        return point;
     }
 }

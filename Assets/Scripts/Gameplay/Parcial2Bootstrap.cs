@@ -47,12 +47,13 @@ public class Parcial2Bootstrap : MonoBehaviour
     {
         if (graph != null) graph.EnsureBuilt();
 
-        SpawnFlock();
-        SpawnHunter();
+        PreyFlock flock = SpawnFlock();
+        HunterAgent hunter = SpawnHunter();
         SpawnWolves();
+        CreateFeedback(flock, hunter);
     }
 
-    private void SpawnFlock()
+    private PreyFlock SpawnFlock()
     {
         GameObject flockObject = new GameObject("PreyFlock");
         flockObject.transform.SetParent(transform, false);
@@ -60,9 +61,10 @@ public class Parcial2Bootstrap : MonoBehaviour
         PreyFlock flock = flockObject.AddComponent<PreyFlock>();
         flock.Configure(LevelLayout.HuntingGround, preyMaterial, preyCount, preySpeed, preyForce);
         flock.Spawn();
+        return flock;
     }
 
-    private void SpawnHunter()
+    private HunterAgent SpawnHunter()
     {
         GameObject hunterObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         hunterObject.name = "Hunter";
@@ -86,6 +88,7 @@ public class Parcial2Bootstrap : MonoBehaviour
 
         HunterAgent hunter = hunterObject.AddComponent<HunterAgent>();
         hunter.Configure(graph, hunterMaterial, line, new Color(0.92f, 0.25f, 0.3f), hunterSpeed, hunterForce);
+        return hunter;
     }
 
     private void SpawnWolves()
@@ -111,5 +114,47 @@ public class Parcial2Bootstrap : MonoBehaviour
             WolfAgent wolf = wolfObject.AddComponent<WolfAgent>();
             wolf.Configure(graph, wolfMaterial, new Color(0.42f, 0.44f, 0.48f), wolfSpeed, wolfForce);
         }
+    }
+
+    private void CreateFeedback(PreyFlock flock, HunterAgent hunter)
+    {
+        Transform lastKnown = CreateMarker("LastKnownMarker", hunterPathMaterial, 0.55f);
+
+        GameObject feedbackObject = new GameObject("HunterHud");
+        feedbackObject.transform.SetParent(transform, false);
+        HunterHud feedback = feedbackObject.AddComponent<HunterHud>();
+        feedback.Configure(hunter, lastKnown);
+
+        for (int i = 0; i < flock.Agents.Count; i++)
+        {
+            PreyAgent prey = flock.Agents[i];
+            Transform icon = CreateMarker($"Detection_{i}", hunterPathMaterial, 0.22f);
+
+            DetectionMarker marker = icon.gameObject.AddComponent<DetectionMarker>();
+            marker.Configure(prey, hunter, icon);
+
+            Renderer iconRenderer = icon.GetComponent<Renderer>();
+            if (iconRenderer != null) iconRenderer.enabled = false;
+        }
+    }
+
+    private Transform CreateMarker(string name, Material material, float size)
+    {
+        GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        go.name = name;
+        go.transform.SetParent(transform, false);
+        go.transform.localScale = Vector3.one * size;
+
+        Collider collider = go.GetComponent<Collider>();
+        if (collider != null)
+        {
+            collider.enabled = false;
+            Destroy(collider);
+        }
+
+        Renderer renderer = go.GetComponent<Renderer>();
+        if (renderer != null) renderer.sharedMaterial = material;
+
+        return go.transform;
     }
 }

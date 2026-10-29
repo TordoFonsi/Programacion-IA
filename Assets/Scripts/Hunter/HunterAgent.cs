@@ -59,6 +59,7 @@ public class HunterAgent : SteeringAgent
     public HunterStateId StateId { get; private set; } = HunterStateId.Search;
     public string CurrentStateName => StateId.ToString();
     public VisionSensor Vision => vision;
+    public Graph Graph => graph;
     public IReadOnlyList<Node> CurrentPath => path;
     public float DeltaTime { get; private set; }
     public float SearchWait { get; set; }
@@ -67,6 +68,7 @@ public class HunterAgent : SteeringAgent
     public float GatherRange => gatherRange;
     public float GatherSearchRadius => gatherSearchRadius;
     public float FleeRadius => fleeRadius;
+    public int StateChanges { get; private set; }
 
     public void Configure(Graph graphReference, Material material, LineRenderer pathLine, Color color, float speed, float force)
     {
@@ -162,6 +164,7 @@ public class HunterAgent : SteeringAgent
     {
         if (StateId == id) return;
 
+        StateChanges++;
         StateId = id;
         stateMachine.ChangeState(id);
     }

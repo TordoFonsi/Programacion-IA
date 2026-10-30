@@ -4,20 +4,27 @@ using UnityEngine;
 public class WolfAgent : SteeringAgent
 {
     [Header("Combat")]
-    [SerializeField] private float attackRange = 1.8f;
-    [SerializeField] private float attackCooldown = 1.1f;
-    [SerializeField] private int attackDamage = 1;
+    [SerializeField] private float captureRadius = 1.6f;
 
     [Header("Senses")]
-    [SerializeField] private float visionRange = 12f;
-    [SerializeField] private float fieldOfView = 120f;
-    [SerializeField] private float aggroRadius = 10f;
+    [SerializeField] private float visionRange = 14f;
+    [SerializeField] private float fieldOfView = 110f;
+    [SerializeField] private float closeRange = 3f;
+    [SerializeField] private float eyeHeight = 1.1f;
+    [SerializeField] private LayerMask obstacleMask = ~0;
 
-    [Header("Pathing")]
-    [SerializeField] private float waypointDistance = 0.4f;
+    [Header("Patrol")]
+    [SerializeField] private Vector3[] patrolRoute;
+    [SerializeField] private float waypointWait = 1f;
+    [SerializeField] private float waypointDistance = 0.5f;
+
+    [Header("Search")]
+    [SerializeField] private float searchDuration = 5f;
+    [SerializeField] private float repathInterval = 0.5f;
 
     private Graph graph;
-    private VisionSensor vision;
+    private WolfPack pack;
+    private LineRenderer pathLine;
     private Renderer body;
     private MaterialPropertyBlock block;
     private Color baseColor;
@@ -25,27 +32,46 @@ public class WolfAgent : SteeringAgent
     private readonly List<Node> path = new List<Node>();
     private int pathIndex;
     private Vector3 pathGoal;
-    private Vector3 lastSafePosition;
-    private float attackTimer;
+    private int patrolIndex;
+    private int patrolDirection = 1;
     private float waitTimer;
+    private float searchTimer;
+    private float repathTimer;
+    private bool hasAlert;
+    private Vector3 lastSafePosition;
 
     public float DeltaTime { get; private set; }
     public string CurrentBehaviour { get; private set; } = "Patrol";
-    public PreyAgent PreyTarget { get; private set; }
-    public HunterAgent HunterTarget { get; private set; }
+    public HunterAgent Target { get; private set; }
+    public Vector3 LastKnownPosition { get; private set; }
+    public bool HasAlert => hasAlert;
+    public bool SeesTarget { get; private set; }
     public IReadOnlyList<Node> CurrentPath => path;
-    public float AggroRadius => aggroRadius;
-    public float AttackRange => attackRange;
+    public float VisionRange => visionRange;
+    public float FieldOfView => fieldOfView;
+    public float CaptureRadius => captureRadius;
+    public string WolfName => name;
 
-    public void Configure(Graph graphReference, Material material, Color color, float speed, float force)
+    public void Configure(
+        Graph graphReference,
+        Material material,
+        Color color,
+        float speed,
+        float force,
+        Vector3[] route,
+        LineRenderer line = null)
     {
         graph = graphReference;
         baseColor = color;
         maxSpeed = speed;
         maxForce = force;
+        patrolRoute = route;
+        patrolIndex = 0;
+        patrolDirection = 1;
+        pathLine = line;
         lastSafePosition = transform.position;
 
-        body = GetComponentInChildren<Renderer>();
+        body = GetComponent<MeshRenderer>();
         if (body != null)
         {
             body.sharedMaterial = material;
@@ -53,19 +79,24 @@ public class WolfAgent : SteeringAgent
             SetColor(baseColor);
         }
 
-        vision = GetComponent<VisionSensor>();
-        if (vision == null) vision = gameObject.AddComponent<VisionSensor>();
-        vision.Configure(visionRange, fieldOfView, 3f, ~0);
+        DrawPath();
+    }
+
+    public void SetPack(WolfPack wolfPack)
+    {
+        pack = wolfPack;
     }
 
     private void OnEnable()
     {
         ThreatRegistry.Register(transform);
+        WolfRegistry.Register(this);
     }
 
     private void OnDisable()
     {
         ThreatRegistry.Unregister(transform);
+        WolfRegistry.Unregister(this);
     }
 
     private void Update()
@@ -75,102 +106,216 @@ public class WolfAgent : SteeringAgent
 
     public void Tick(float deltaTime)
     {
-        if (graph == null || vision == null) return;
+        if (graph == null) return;
 
         DeltaTime = deltaTime;
-        attackTimer += deltaTime;
-        vision.Scan(deltaTime);
+        repathTimer -= deltaTime;
 
-        ChooseTarget();
+        SeesTarget = TrySeeHunter(out HunterAgent seen);
 
-        if (HunterTarget != null) ChaseHunter();
-        else if (PreyTarget != null) ChasePrey();
+        if (seen != null)
+        {
+            bool newTarget = Target != seen;
+
+            Target = seen;
+            LastKnownPosition = seen.transform.position;
+            hasAlert = true;
+            searchTimer = searchDuration;
+
+            if (newTarget && pack != null) pack.Alert(LastKnownPosition, this);
+        }
+
+        if (Target != null && Target.IsDead) LoseTarget();
+        else if (hasAlert && IsHunterInsideSafeZone()) LoseTarget();
+
+        if (Target != null && SeesTarget) Chase();
+        else if (hasAlert) MoveToLastKnown();
         else Patrol();
 
         KeepOutOfSafeZone();
+        TryCapture();
+        DrawPath();
     }
 
-    private void ChooseTarget()
+    public void ReceiveAlert(Vector3 position)
     {
-        PreyTarget = vision.IsVisible ? vision.Target : null;
-        HunterTarget = HunterRegistry.FindNearest(transform.position, aggroRadius);
-
-        if (PreyTarget != null && !PreyTarget.IsActive) PreyTarget = null;
-        if (HunterTarget != null && HunterTarget.IsDead) HunterTarget = null;
-
-        if (PreyTarget == null || HunterTarget == null) return;
-
-        float preyDistance = (PreyTarget.transform.position - transform.position).sqrMagnitude;
-        float hunterDistance = (HunterTarget.transform.position - transform.position).sqrMagnitude;
-
-        if (hunterDistance < preyDistance) PreyTarget = null;
-        else HunterTarget = null;
+        LastKnownPosition = position;
+        hasAlert = true;
+        searchTimer = searchDuration;
+        path.Clear();
+        pathIndex = 0;
+        repathTimer = 0f;
     }
 
-    private void ChaseHunter()
+    private void LoseTarget()
     {
-        CurrentBehaviour = "Chase Hunter";
+        Target = null;
+        hasAlert = false;
+        SeesTarget = false;
+        searchTimer = 0f;
+        path.Clear();
+        pathIndex = 0;
+        SetColor(baseColor);
+        DrawPath();
+    }
 
-        Vector3 offset = HunterTarget.transform.position - transform.position;
+    private void Chase()
+    {
+        CurrentBehaviour = "Chase";
+        SetColor(new Color(0.85f, 0.2f, 0.15f));
+
+        Vector3 offset = Target.transform.position - transform.position;
         offset.y = 0f;
 
-        if (offset.magnitude <= attackRange)
+        if (offset.sqrMagnitude <= waypointDistance * waypointDistance)
         {
             Halt();
-            Face(HunterTarget.transform.position);
-            CurrentBehaviour = "Attack Hunter";
-
-            if (attackTimer < attackCooldown) return;
-
-            attackTimer = 0f;
-            HunterTarget.ApplyDamage(attackDamage, transform.position);
             return;
         }
 
-        SetDestination(HunterTarget.transform.position);
-        FollowPath(DeltaTime);
-    }
-
-    private void ChasePrey()
-    {
-        CurrentBehaviour = "Chase Prey";
-
-        Vector3 offset = PreyTarget.transform.position - transform.position;
-        offset.y = 0f;
-
-        if (offset.magnitude <= attackRange)
+        if (HasLineOfSight(Target.transform.position + Vector3.up * 0.6f))
         {
-            Halt();
-            Face(PreyTarget.transform.position);
-            CurrentBehaviour = "Attack Prey";
-
-            if (attackTimer < attackCooldown) return;
-
-            attackTimer = 0f;
-            PreyTarget.ApplyDamage(attackDamage, transform.position);
+            path.Clear();
+            pathIndex = 0;
+            ApplyAcceleration(Steer(offset.normalized * maxSpeed), DeltaTime);
             return;
         }
 
-        SetDestination(PreyTarget.transform.position);
+        if (repathTimer <= 0f || path.Count == 0)
+        {
+            SetDestination(Target.transform.position);
+            repathTimer = repathInterval;
+        }
+
         FollowPath(DeltaTime);
+    }
+
+    private void MoveToLastKnown()
+    {
+        CurrentBehaviour = "Alert";
+
+        Vector3 offset = LastKnownPosition - transform.position;
+        offset.y = 0f;
+
+        if (offset.magnitude <= 1.5f || (path.Count > 0 && HasArrived))
+        {
+            Halt();
+            Search();
+            return;
+        }
+
+        if (HasLineOfSight(LastKnownPosition + Vector3.up * 0.5f))
+        {
+            path.Clear();
+            pathIndex = 0;
+            ApplyAcceleration(Steer(offset.normalized * maxSpeed), DeltaTime);
+            return;
+        }
+
+        if (repathTimer <= 0f || path.Count == 0)
+        {
+            SetDestination(LastKnownPosition);
+            repathTimer = repathInterval;
+        }
+
+        FollowPath(DeltaTime);
+    }
+
+    private void Search()
+    {
+        CurrentBehaviour = "Search";
+        SetColor(new Color(0.95f, 0.6f, 0.15f));
+
+        searchTimer -= DeltaTime;
+        transform.Rotate(Vector3.up, 90f * DeltaTime, Space.World);
+
+        if (searchTimer > 0f) return;
+
+        LoseTarget();
     }
 
     private void Patrol()
     {
         CurrentBehaviour = "Patrol";
 
-        if (HasArrived)
+        if (patrolRoute == null || patrolRoute.Length == 0) return;
+
+        if (waitTimer > 0f)
         {
             Halt();
             waitTimer -= DeltaTime;
-            if (waitTimer > 0f) return;
+            return;
+        }
 
-            SetDestination(RandomPatrolPoint());
-            waitTimer = 1.2f;
+        Vector3 waypoint = patrolRoute[patrolIndex];
+        Vector3 offset = waypoint - transform.position;
+        offset.y = 0f;
+
+        if (offset.sqrMagnitude <= waypointDistance * waypointDistance)
+        {
+            BeginWait();
+            return;
+        }
+
+        if (HasLineOfSight(waypoint + Vector3.up * 0.5f))
+        {
+            path.Clear();
+            pathIndex = 0;
+            ApplyAcceleration(Steer(offset.normalized * maxSpeed), DeltaTime);
+            return;
+        }
+
+        if (repathTimer <= 0f || path.Count == 0)
+        {
+            SetDestination(waypoint);
+            repathTimer = repathInterval;
+        }
+
+        if (path.Count > 0 && HasArrived)
+        {
+            BeginWait();
             return;
         }
 
         FollowPath(DeltaTime);
+    }
+
+    private void BeginWait()
+    {
+        waitTimer = waypointWait;
+        path.Clear();
+        pathIndex = 0;
+
+        if (patrolRoute.Length == 1) return;
+
+        patrolIndex += patrolDirection;
+
+        if (patrolIndex >= patrolRoute.Length)
+        {
+            patrolDirection = -1;
+            patrolIndex = patrolRoute.Length - 2;
+            return;
+        }
+
+        if (patrolIndex < 0)
+        {
+            patrolDirection = 1;
+            patrolIndex = 1;
+        }
+    }
+
+    private void TryCapture()
+    {
+        if (Target == null || Target.IsDead || Target.IsInsideSafeZone()) return;
+
+        Vector3 point = Target.transform.position + Vector3.up * 0.6f;
+        Vector3 offset = Target.transform.position - transform.position;
+        offset.y = 0f;
+        if (offset.magnitude > captureRadius) return;
+        if (!SeesTarget && !HasLineOfSight(point)) return;
+
+        Target.Kill();
+        LoseTarget();
     }
 
     public bool SetDestination(Vector3 worldPosition)
@@ -222,8 +367,7 @@ public class WolfAgent : SteeringAgent
             offset.y = 0f;
         }
 
-        Vector3 desired = offset.normalized * maxSpeed;
-        ApplyAcceleration(Steer(desired), deltaTime);
+        ApplyAcceleration(Steer(offset.normalized * maxSpeed), deltaTime);
     }
 
     public void Halt()
@@ -231,33 +375,63 @@ public class WolfAgent : SteeringAgent
         Stop();
     }
 
-    public void Face(Vector3 point)
+    private bool TrySeeHunter(out HunterAgent hunter)
     {
-        Vector3 direction = point - transform.position;
-        direction.y = 0f;
-        if (direction.sqrMagnitude > 0.001f) transform.forward = direction;
+        hunter = null;
+
+        IReadOnlyList<HunterAgent> all = HunterRegistry.All;
+        Vector3 origin = transform.position + Vector3.up * eyeHeight;
+
+        for (int i = 0; i < all.Count; i++)
+        {
+            HunterAgent candidate = all[i];
+            if (candidate == null || candidate.IsDead) continue;
+            if (candidate.IsInsideSafeZone()) continue;
+
+            Vector3 point = candidate.transform.position + Vector3.up * 0.6f;
+            Vector3 offset = point - origin;
+            offset.y = 0f;
+
+            float distance = offset.magnitude;
+            if (distance > visionRange || distance < 0.0001f) continue;
+
+            if (distance > closeRange)
+            {
+                float angle = Vector3.Angle(transform.forward, offset);
+                if (angle > fieldOfView * 0.5f) continue;
+            }
+
+            if (Physics.Raycast(origin, offset.normalized, distance, obstacleMask)) continue;
+
+            hunter = candidate;
+            return true;
+        }
+
+        return false;
     }
 
-    public Vector3 RandomPatrolPoint()
+    private bool IsHunterInsideSafeZone()
     {
-        graph.EnsureBuilt();
-
-        IReadOnlyList<Node> nodes = graph.AllNodes;
-        if (nodes.Count == 0) return transform.position;
-
-        for (int attempt = 0; attempt < 24; attempt++)
+        IReadOnlyList<HunterAgent> all = HunterRegistry.All;
+        for (int i = 0; i < all.Count; i++)
         {
-            Node node = nodes[Random.Range(0, nodes.Count)];
-            if (node.CellType == CellType.HuntingGround) return node.WorldPosition;
+            HunterAgent hunter = all[i];
+            if (hunter == null || hunter.IsDead) continue;
+            if (hunter.IsInsideSafeZone()) return true;
         }
 
-        for (int attempt = 0; attempt < 8; attempt++)
-        {
-            Node node = nodes[Random.Range(0, nodes.Count)];
-            if (node.CellType != CellType.SafeZone) return node.WorldPosition;
-        }
+        return false;
+    }
 
-        return transform.position;
+    private bool HasLineOfSight(Vector3 point)
+    {
+        Vector3 origin = transform.position + Vector3.up * eyeHeight;
+        Vector3 offset = point - origin;
+        float distance = offset.magnitude;
+
+        if (distance < 0.01f) return true;
+
+        return !Physics.Raycast(origin, offset / distance, distance, obstacleMask);
     }
 
     public bool IsInsideSafeZone()
@@ -285,6 +459,26 @@ public class WolfAgent : SteeringAgent
 
         transform.position = lastSafePosition;
         Velocity = Vector3.zero;
+        path.Clear();
+        pathIndex = 0;
+    }
+
+    private void DrawPath()
+    {
+        if (pathLine == null) return;
+
+        bool show = hasAlert && path.Count > 1;
+        pathLine.enabled = show;
+
+        if (!show)
+        {
+            pathLine.positionCount = 0;
+            return;
+        }
+
+        pathLine.positionCount = path.Count;
+        for (int i = 0; i < path.Count; i++)
+            pathLine.SetPosition(i, path[i].WorldPosition + Vector3.up * 0.15f);
     }
 
     public void SetColor(Color color)
@@ -299,12 +493,57 @@ public class WolfAgent : SteeringAgent
 
     private void OnDrawGizmos()
     {
+        if (!GizmoSettings.VisionCones) return;
+
+        DrawVisionCone();
+    }
+
+    private void DrawVisionCone()
+    {
+        const int steps = 14;
+        float half = fieldOfView * 0.5f;
+
+        Gizmos.color = Target != null
+            ? new Color(1f, 0.25f, 0.2f, 0.75f)
+            : new Color(1f, 0.55f, 0.1f, 0.35f);
+
+        Vector3 previous = GroundPoint(-half);
+
+        for (int i = 1; i <= steps; i++)
+        {
+            float angle = -half + fieldOfView * i / steps;
+            Vector3 point = GroundPoint(angle);
+
+            Gizmos.DrawLine(previous, point);
+            previous = point;
+        }
+
+        Gizmos.DrawLine(GroundOrigin, GroundPoint(-half));
+        Gizmos.DrawLine(GroundOrigin, GroundPoint(half));
+
+        if (!hasAlert) return;
+
+        Gizmos.color = new Color(1f, 0.4f, 0.1f, 0.9f);
+        Gizmos.DrawWireSphere(LastKnownPosition + Vector3.up * 0.3f, 0.7f);
+    }
+
+    private Vector3 GroundOrigin => new Vector3(transform.position.x, 0.05f, transform.position.z);
+
+    private Vector3 GroundPoint(float angle)
+    {
+        Vector3 direction = Quaternion.Euler(0f, angle, 0f) * transform.forward;
+        direction.y = 0f;
+
+        Vector3 point = GroundOrigin + direction.normalized * visionRange;
+        point.y = 0.05f;
+        return point;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
         if (!GizmoSettings.CombatRadii) return;
 
-        Gizmos.color = new Color(1f, 0.55f, 0.1f, 0.5f);
-        Gizmos.DrawWireSphere(transform.position, aggroRadius);
-
         Gizmos.color = new Color(0.9f, 0.15f, 0.1f, 0.65f);
-        Gizmos.DrawWireSphere(transform.position, attackRange);
+        Gizmos.DrawWireSphere(transform.position, captureRadius);
     }
 }

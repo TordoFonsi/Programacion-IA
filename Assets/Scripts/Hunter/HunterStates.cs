@@ -18,12 +18,7 @@ public class HunterSearchState : State
     {
         if (agent.TryHigherPriority(HunterStateId.Search)) return;
 
-        if (agent.Vision.HasTarget)
-        {
-            agent.SetDestination(agent.Vision.LastKnownPosition);
-            agent.FollowPath(agent.DeltaTime);
-            return;
-        }
+        agent.TickInterest(agent.DeltaTime);
 
         if (agent.HasArrived)
         {
@@ -61,16 +56,25 @@ public class HunterAttackState : State
         Vector3 offset = target.transform.position - agent.transform.position;
         offset.y = 0f;
 
-        if (offset.magnitude <= agent.AttackRange)
+        if (offset.magnitude <= agent.MeleeAttackRange)
         {
             agent.Halt();
             agent.Face(target.transform.position);
-            agent.TryAttack(target);
+
+            if (agent.TryAttack(target)) agent.ChangeState(HunterStateId.Search);
             return;
         }
 
-        agent.SetDestination(target.transform.position);
-        agent.FollowPath(agent.DeltaTime);
+        if (offset.magnitude <= agent.RangeAttackRange)
+        {
+            agent.Halt();
+            agent.Face(target.transform.position);
+
+            if (agent.TryAttack(target)) agent.ChangeState(HunterStateId.Search);
+            return;
+        }
+
+        agent.PursueTarget(target);
     }
 }
 
@@ -83,6 +87,11 @@ public class HunterGatherState : State
         this.agent = agent;
     }
 
+    public override void Enter()
+    {
+        agent.ResetGatherTimer();
+    }
+
     public override void Update()
     {
         if (agent.TryHigherPriority(HunterStateId.Gather)) return;
@@ -90,6 +99,7 @@ public class HunterGatherState : State
         PreyAgent target = agent.FindDeadPrey();
         if (target == null)
         {
+            agent.ResetGatherTimer();
             agent.ChangeState(HunterStateId.Search);
             return;
         }
@@ -107,7 +117,10 @@ public class HunterGatherState : State
         agent.Halt();
         agent.Face(target.transform.position);
 
-        if (!agent.GatherTick(target)) agent.ChangeState(HunterStateId.Search);
+        if (agent.GatherTick(target)) return;
+
+        agent.ResetGatherTimer();
+        agent.ChangeState(agent.Collected >= agent.Goal ? HunterStateId.Exit : HunterStateId.Search);
     }
 }
 
@@ -126,7 +139,7 @@ public class HunterExitState : State
 
         if (agent.IsInsideExitZone())
         {
-            agent.MarkEscaped();
+            agent.CompleteRun();
             return;
         }
 
@@ -139,6 +152,7 @@ public class HunterFleeState : State
 {
     private readonly HunterAgent agent;
     private float repathTimer;
+    private float waitTimer;
 
     public HunterFleeState(HunterAgent agent, StateMachine stateMachine) : base(stateMachine)
     {
@@ -148,19 +162,29 @@ public class HunterFleeState : State
     public override void Enter()
     {
         repathTimer = 0f;
+        waitTimer = 0f;
+        agent.Halt();
     }
 
     public override void Update()
     {
-        if (agent.TryHigherPriority(HunterStateId.Flee)) return;
+        if (agent.IsDead) return;
 
         if (agent.IsInsideSafeZone())
         {
             agent.Halt();
+            waitTimer += agent.DeltaTime;
+
+            if (waitTimer < agent.SafeZoneWaitTime) return;
+
+            waitTimer = 0f;
+            agent.ChangeState(agent.PostFleeState());
             return;
         }
 
+        waitTimer = 0f;
         repathTimer -= agent.DeltaTime;
+
         if (repathTimer <= 0f)
         {
             agent.SetDestination(agent.NearestSafeZone());

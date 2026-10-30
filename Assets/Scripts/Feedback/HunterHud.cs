@@ -17,7 +17,7 @@ public class HunterHud : MonoBehaviour
         if (hunter == null || lastKnownMarker == null) return;
 
         VisionSensor vision = hunter.Vision;
-        bool show = vision != null && !vision.IsVisible && vision.MemoryTimer > 0f;
+        bool show = !hunter.IsDead && vision != null && !vision.IsVisible && vision.MemoryTimer > 0f;
 
         if (lastKnownMarker.gameObject.activeSelf != show) lastKnownMarker.gameObject.SetActive(show);
         if (!show) return;
@@ -36,24 +36,32 @@ public class HunterHud : MonoBehaviour
             style.normal.textColor = Color.white;
         }
 
-        string detection = "Sin objetivo";
-        if (hunter.Vision != null && hunter.Vision.IsVisible) detection = "Detectado";
-        else if (hunter.Vision != null && hunter.Vision.HasTarget) detection = "Alerta";
+        string state = hunter.IsDead
+            ? $"Muerto ({hunter.RespawnRemaining:0.0}s)"
+            : hunter.CurrentStateName;
 
-        string state = "Muerto";
-        if (!hunter.IsDead) state = hunter.IsEscaped ? "Escapó" : hunter.CurrentStateName;
+        string detection = "Sin objetivo";
+        if (hunter.DetectedWolf != null) detection = $"Lobo {hunter.DetectedWolf.WolfName}";
+        else if (hunter.Vision != null && hunter.Vision.IsVisible) detection = "Boid detectado";
+        else if (hunter.Vision != null && hunter.Vision.HasTarget) detection = "Alerta (memoria)";
 
         Vector3 last = hunter.LastKnownPosition;
         string lastPosition = hunter.Vision != null && hunter.Vision.HasTarget
             ? $"({last.x:0.0}, {last.z:0.0})"
             : "(sin datos)";
 
-        GUI.Box(new Rect(12f, 12f, 300f, 160f), GUIContent.none);
-        GUI.Label(new Rect(24f, 20f, 280f, 22f), $"Estado: {state}", style);
-        GUI.Label(new Rect(24f, 42f, 280f, 22f), $"Vida: {hunter.Health}", style);
-        GUI.Label(new Rect(24f, 64f, 280f, 22f), $"Recolectados: {hunter.Collected}/{hunter.Goal}", style);
-        GUI.Label(new Rect(24f, 86f, 280f, 22f), $"Detección: {detection}", style);
-        GUI.Label(new Rect(24f, 108f, 280f, 22f), $"Última posición: {lastPosition}", style);
-        GUI.Label(new Rect(24f, 130f, 280f, 22f), $"Camino A*: {hunter.CurrentPath.Count} nodos", style);
+        string safeZone = hunter.HasSafeZoneTarget
+            ? hunter.SafeZoneTargetName
+            : "-";
+
+        GUI.Box(new Rect(12f, 12f, 320f, 205f), GUIContent.none);
+        GUI.Label(new Rect(24f, 20f, 300f, 22f), $"Estado: {state}", style);
+        GUI.Label(new Rect(24f, 42f, 300f, 22f), $"Vida: {hunter.Health}", style);
+        GUI.Label(new Rect(24f, 64f, 300f, 22f), $"Recolectados: {hunter.Collected}/{hunter.Goal}", style);
+        GUI.Label(new Rect(24f, 86f, 300f, 22f), $"Ciclos completados: {hunter.RunsCompleted}", style);
+        GUI.Label(new Rect(24f, 108f, 300f, 22f), $"Deteccion: {detection}", style);
+        GUI.Label(new Rect(24f, 130f, 300f, 22f), $"Ultima posicion: {lastPosition}", style);
+        GUI.Label(new Rect(24f, 152f, 300f, 22f), $"Camino A*: {hunter.CurrentPath.Count} nodos", style);
+        GUI.Label(new Rect(24f, 174f, 300f, 22f), $"Zona segura: {safeZone}", style);
     }
 }

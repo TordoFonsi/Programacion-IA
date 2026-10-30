@@ -16,12 +16,42 @@ public class Parcial2Bootstrap : MonoBehaviour
     [SerializeField] private float wolfSpeed = 4.2f;
     [SerializeField] private float wolfForce = 16f;
 
-    private static readonly Vector3[] WolfSpawns =
+    private static readonly Vector3[][] WolfRoutes =
     {
-        new Vector3(34f, 0.7f, 26f),
-        new Vector3(66f, 0.7f, 34f),
-        new Vector3(50f, 0.7f, 25f),
-        new Vector3(50f, 0.7f, 35f)
+        // L1: anillo oeste (ida y vuelta)
+        new[]
+        {
+            new Vector3(16.5f, 0.7f, 8f),
+            new Vector3(16.5f, 0.7f, 29.5f),
+            new Vector3(16.5f, 0.7f, 52f)
+        },
+        // L2: anillo norte + sala norte
+        new[]
+        {
+            new Vector3(25f, 0.7f, 53.5f),
+            new Vector3(37.5f, 0.7f, 53.5f),
+            new Vector3(37.5f, 0.7f, 41.5f),
+            new Vector3(62.5f, 0.7f, 41.5f),
+            new Vector3(62.5f, 0.7f, 53.5f),
+            new Vector3(75f, 0.7f, 53.5f)
+        },
+        // L3: anillo este (ida y vuelta)
+        new[]
+        {
+            new Vector3(83.5f, 0.7f, 8f),
+            new Vector3(83.5f, 0.7f, 29.5f),
+            new Vector3(83.5f, 0.7f, 52f)
+        },
+        // L4: anillo sur + sala sur
+        new[]
+        {
+            new Vector3(25f, 0.7f, 6.5f),
+            new Vector3(37.5f, 0.7f, 6.5f),
+            new Vector3(37.5f, 0.7f, 18.5f),
+            new Vector3(62.5f, 0.7f, 18.5f),
+            new Vector3(62.5f, 0.7f, 6.5f),
+            new Vector3(75f, 0.7f, 6.5f)
+        }
     };
 
     public void Configure(
@@ -49,8 +79,8 @@ public class Parcial2Bootstrap : MonoBehaviour
 
         PreyFlock flock = SpawnFlock();
         HunterAgent hunter = SpawnHunter();
-        SpawnWolves();
-        CreateFeedback(flock, hunter);
+        WolfPack pack = SpawnWolves();
+        CreateFeedback(flock, hunter, pack);
     }
 
     private PreyFlock SpawnFlock()
@@ -87,22 +117,25 @@ public class Parcial2Bootstrap : MonoBehaviour
         line.endColor = new Color(1f, 0.9f, 0.3f);
 
         HunterAgent hunter = hunterObject.AddComponent<HunterAgent>();
-        hunter.Configure(graph, hunterMaterial, line, new Color(0.92f, 0.25f, 0.3f), hunterSpeed, hunterForce);
+        hunter.Configure(graph, hunterMaterial, line, new Color(0.92f, 0.25f, 0.3f), hunterSpeed, hunterForce, preyMaterial);
         return hunter;
     }
 
-    private void SpawnWolves()
+    private WolfPack SpawnWolves()
     {
         GameObject packObject = new GameObject("WolfPack");
         packObject.transform.SetParent(transform, false);
+        WolfPack pack = packObject.AddComponent<WolfPack>();
 
         for (int i = 0; i < wolfCount; i++)
         {
+            Vector3[] route = WolfRoutes[i % WolfRoutes.Length];
+
             GameObject wolfObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            wolfObject.name = $"Wolf_{i}";
+            wolfObject.name = $"L{i + 1}";
             wolfObject.transform.SetParent(packObject.transform, false);
             wolfObject.transform.localScale = new Vector3(0.9f, 0.6f, 0.9f);
-            wolfObject.transform.position = WolfSpawns[i % WolfSpawns.Length];
+            wolfObject.transform.position = route[0];
 
             Collider collider = wolfObject.GetComponent<Collider>();
             if (collider != null)
@@ -112,11 +145,24 @@ public class Parcial2Bootstrap : MonoBehaviour
             }
 
             WolfAgent wolf = wolfObject.AddComponent<WolfAgent>();
-            wolf.Configure(graph, wolfMaterial, new Color(0.42f, 0.44f, 0.48f), wolfSpeed, wolfForce);
+
+            LineRenderer line = wolfObject.AddComponent<LineRenderer>();
+            line.useWorldSpace = true;
+            line.widthMultiplier = 0.12f;
+            line.numCapVertices = 2;
+            line.sharedMaterial = hunterPathMaterial;
+            line.startColor = new Color(1f, 0.35f, 0.2f, 0.8f);
+            line.endColor = new Color(1f, 0.8f, 0.25f, 0.8f);
+            line.positionCount = 0;
+
+            wolf.Configure(graph, wolfMaterial, new Color(0.42f, 0.44f, 0.48f), wolfSpeed, wolfForce, route, line);
+            pack.Register(wolf);
         }
+
+        return pack;
     }
 
-    private void CreateFeedback(PreyFlock flock, HunterAgent hunter)
+    private void CreateFeedback(PreyFlock flock, HunterAgent hunter, WolfPack pack)
     {
         Transform lastKnown = CreateMarker("LastKnownMarker", hunterPathMaterial, 0.55f);
 
@@ -124,6 +170,11 @@ public class Parcial2Bootstrap : MonoBehaviour
         feedbackObject.transform.SetParent(transform, false);
         HunterHud feedback = feedbackObject.AddComponent<HunterHud>();
         feedback.Configure(hunter, lastKnown);
+
+        GameObject wolfHudObject = new GameObject("WolfHud");
+        wolfHudObject.transform.SetParent(transform, false);
+        WolfHud wolfHud = wolfHudObject.AddComponent<WolfHud>();
+        wolfHud.Configure(pack, hunter);
 
         for (int i = 0; i < flock.Agents.Count; i++)
         {

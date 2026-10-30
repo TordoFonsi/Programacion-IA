@@ -15,25 +15,33 @@ public class HunterAgent : SteeringAgent
 {
     [Header("Life")]
     [SerializeField] private int maxHealth = 3;
-    [SerializeField] private int goal = 3;
+    [SerializeField] private int requiredGathers = 3;
+    [SerializeField] private float respawnTime = 5f;
+    [SerializeField] private float safeZoneWaitTime = 3f;
 
     [Header("Combat")]
-    [SerializeField] private float attackRange = 1.6f;
+    [SerializeField] private float meleeAttackRange = 1.6f;
+    [SerializeField] private float rangeAttackRange = 6f;
     [SerializeField] private float attackCooldown = 0.8f;
     [SerializeField] private int attackDamage = 1;
 
     [Header("Gather")]
     [SerializeField] private float gatherRange = 1.4f;
     [SerializeField] private float gatherTime = 1.5f;
-    [SerializeField] private float gatherSearchRadius = 12f;
 
     [Header("Senses")]
     [SerializeField] private float visionRange = 14f;
     [SerializeField] private float fieldOfView = 100f;
-    [SerializeField] private float fleeRadius = 8f;
+    [SerializeField] private float eyeHeight = 1.2f;
+    [SerializeField] private LayerMask obstacleMask = ~0;
 
     [Header("Pathing")]
     [SerializeField] private float waypointDistance = 0.35f;
+
+    [Header("Interest Objects")]
+    [SerializeField] private float interestSpawnInterval = 6f;
+    [SerializeField] private int maxInterestObjects = 5;
+    [SerializeField] private Material interestMaterial;
 
     private Graph graph;
     private VisionSensor vision;
@@ -44,18 +52,23 @@ public class HunterAgent : SteeringAgent
     private Color baseColor;
 
     private readonly List<Node> path = new List<Node>();
+    private readonly List<GameObject> interestObjects = new List<GameObject>();
+    private Transform interestRoot;
     private int pathIndex;
     private Vector3 pathGoal;
     private float attackTimer;
     private float gatherTimer;
+    private float interestTimer;
+    private float respawnTimer;
     private int health;
-    private bool escaped;
+    private bool dead;
 
     public int Collected { get; private set; }
-    public int Goal => goal;
+    public int Goal => requiredGathers;
     public int Health => health;
-    public bool IsDead => health <= 0;
-    public bool IsEscaped => escaped;
+    public bool IsDead => dead;
+    public float RespawnRemaining => dead ? Mathf.Max(0f, respawnTimer) : 0f;
+    public int RunsCompleted { get; private set; }
     public HunterStateId StateId { get; private set; } = HunterStateId.Search;
     public string CurrentStateName => StateId.ToString();
     public VisionSensor Vision => vision;
@@ -64,21 +77,35 @@ public class HunterAgent : SteeringAgent
     public float DeltaTime { get; private set; }
     public float SearchWait { get; set; }
     public Vector3 LastKnownPosition => vision != null ? vision.LastKnownPosition : transform.position;
-    public float AttackRange => attackRange;
+    public float MeleeAttackRange => meleeAttackRange;
+    public float RangeAttackRange => rangeAttackRange;
+    public float VisionRadius => visionRange;
     public float GatherRange => gatherRange;
-    public float GatherSearchRadius => gatherSearchRadius;
-    public float FleeRadius => fleeRadius;
+    public float RespawnTime => respawnTime;
+    public float SafeZoneWaitTime => safeZoneWaitTime;
     public int StateChanges { get; private set; }
+    public WolfAgent DetectedWolf { get; private set; }
+    public Vector3 SafeZoneTarget { get; private set; }
+    public string SafeZoneTargetName { get; private set; } = "-";
+    public bool HasSafeZoneTarget => SafeZoneTargetName != "-";
 
-    public void Configure(Graph graphReference, Material material, LineRenderer pathLine, Color color, float speed, float force)
+    public void Configure(
+        Graph graphReference,
+        Material material,
+        LineRenderer pathLine,
+        Color color,
+        float speed,
+        float force,
+        Material interestMaterialReference = null)
     {
         graph = graphReference;
         line = pathLine;
         baseColor = color;
         maxSpeed = speed;
         maxForce = force;
+        if (interestMaterialReference != null) interestMaterial = interestMaterialReference;
 
-        body = GetComponentInChildren<Renderer>();
+        body = GetComponent<MeshRenderer>();
         if (body != null)
         {
             body.sharedMaterial = material;
@@ -88,12 +115,17 @@ public class HunterAgent : SteeringAgent
 
         vision = GetComponent<VisionSensor>();
         if (vision == null) vision = gameObject.AddComponent<VisionSensor>();
-        vision.Configure(visionRange, fieldOfView, 3f, ~0);
+        vision.Configure(visionRange, fieldOfView, 3f, obstacleMask);
 
         health = maxHealth;
+        dead = false;
         Collected = 0;
-        escaped = false;
+        RunsCompleted = 0;
         StateId = HunterStateId.Search;
+        SafeZoneTarget = transform.position;
+        SafeZoneTargetName = "-";
+        ClearPath();
+        SetVisible(true);
     }
 
     private void Awake()
@@ -109,8 +141,8 @@ public class HunterAgent : SteeringAgent
     public void StartBrain()
     {
         EnsureStates();
-        stateMachine.ChangeState(HunterStateId.Search);
         StateId = HunterStateId.Search;
+        stateMachine.ChangeState(HunterStateId.Search);
     }
 
     private void EnsureStates()
@@ -148,20 +180,24 @@ public class HunterAgent : SteeringAgent
         if (graph == null) return;
 
         DeltaTime = deltaTime;
-        attackTimer += deltaTime;
-        if (vision != null) vision.Scan(deltaTime);
 
-        if (IsDead && StateId != HunterStateId.Dead)
+        if (dead)
         {
-            ChangeState(HunterStateId.Dead);
+            respawnTimer -= deltaTime;
+            if (respawnTimer <= 0f) Respawn();
             return;
         }
 
+        attackTimer += deltaTime;
+        if (vision != null) vision.Scan(deltaTime);
+
+        EnsureStates();
         stateMachine.Update();
     }
 
     public void ChangeState(HunterStateId id)
     {
+        EnsureStates();
         if (StateId == id) return;
 
         StateChanges++;
@@ -173,25 +209,23 @@ public class HunterAgent : SteeringAgent
     {
         if (IsDead)
         {
+            if (current == HunterStateId.Dead) return false;
+
             ChangeState(HunterStateId.Dead);
             return true;
         }
 
+        // Flee owns its exit: it must be able to wait inside a safe zone even if
+        // a wolf is still visible from outside.
+        if (current == HunterStateId.Flee) return false;
+
         if (ShouldFlee())
         {
-            if (current == HunterStateId.Flee) return false;
-
             ChangeState(HunterStateId.Flee);
             return true;
         }
 
-        if (current == HunterStateId.Flee)
-        {
-            ChangeState(ChooseFallback());
-            return true;
-        }
-
-        if (current != HunterStateId.Exit && Collected >= goal)
+        if (current != HunterStateId.Exit && Collected >= requiredGathers)
         {
             ChangeState(HunterStateId.Exit);
             return true;
@@ -208,8 +242,8 @@ public class HunterAgent : SteeringAgent
         if (current != HunterStateId.Attack &&
             current != HunterStateId.Gather &&
             current != HunterStateId.Exit &&
-            vision.IsVisible &&
-            vision.Target != null)
+            CanAttack() &&
+            HasLivingPreyInSight())
         {
             ChangeState(HunterStateId.Attack);
             return true;
@@ -218,23 +252,60 @@ public class HunterAgent : SteeringAgent
         return false;
     }
 
-    private HunterStateId ChooseFallback()
+    public HunterStateId PostFleeState()
     {
-        if (Collected >= goal) return HunterStateId.Exit;
-        if (FindDeadPrey() != null) return HunterStateId.Gather;
-        if (vision.IsVisible && vision.Target != null) return HunterStateId.Attack;
-        return HunterStateId.Search;
+        return Collected >= requiredGathers ? HunterStateId.Exit : HunterStateId.Search;
+    }
+
+    public bool CanAttack()
+    {
+        return attackTimer >= attackCooldown;
+    }
+
+    public bool HasLivingPreyInSight()
+    {
+        if (vision == null || !vision.IsVisible || vision.Target == null) return false;
+        return vision.Target.IsActive;
     }
 
     public bool ShouldFlee()
     {
-        return ThreatRegistry.FindNearest(transform.position, fleeRadius, transform) != null;
+        DetectedWolf = FindVisibleWolf();
+        return DetectedWolf != null;
+    }
+
+    private WolfAgent FindVisibleWolf()
+    {
+        IReadOnlyList<WolfAgent> all = WolfRegistry.All;
+        Vector3 origin = EyePosition;
+        WolfAgent best = null;
+        float bestDistance = visionRange * visionRange;
+
+        for (int i = all.Count - 1; i >= 0; i--)
+        {
+            WolfAgent wolf = all[i];
+            if (wolf == null) continue;
+
+            Vector3 point = wolf.transform.position + Vector3.up * 0.6f;
+            Vector3 offset = point - origin;
+            float distance = offset.magnitude;
+            if (distance > visionRange || distance < 0.0001f) continue;
+
+            if (Physics.Raycast(origin, offset / distance, distance, obstacleMask)) continue;
+            if (distance >= bestDistance) continue;
+
+            bestDistance = distance;
+            best = wolf;
+        }
+
+        return best;
     }
 
     public PreyAgent FindDeadPrey()
     {
         PreyAgent best = null;
-        float bestDistance = gatherSearchRadius * gatherSearchRadius;
+        float bestDistance = visionRange * visionRange;
+        Vector3 origin = EyePosition;
 
         IReadOnlyList<PreyAgent> all = PreyRegistry.All;
         for (int i = 0; i < all.Count; i++)
@@ -242,7 +313,11 @@ public class HunterAgent : SteeringAgent
             PreyAgent prey = all[i];
             if (prey == null || !prey.IsDead || prey.IsCollected) continue;
 
-            float distance = (prey.transform.position - transform.position).sqrMagnitude;
+            Vector3 point = prey.transform.position + Vector3.up * 0.5f;
+            Vector3 offset = point - origin;
+            float distance = offset.magnitude;
+            if (distance > visionRange) continue;
+            if (distance > 0.0001f && Physics.Raycast(origin, offset / distance, distance, obstacleMask)) continue;
             if (distance >= bestDistance) continue;
 
             bestDistance = distance;
@@ -306,13 +381,19 @@ public class HunterAgent : SteeringAgent
             offset.y = 0f;
         }
 
-        Vector3 desired = offset.normalized * maxSpeed;
-        ApplyAcceleration(Steer(desired), deltaTime);
+        ApplyAcceleration(Steer(offset.normalized * maxSpeed), deltaTime);
     }
 
     public void Halt()
     {
         Stop();
+    }
+
+    public void ClearPath()
+    {
+        path.Clear();
+        pathIndex = 0;
+        DrawPath();
     }
 
     public void Face(Vector3 point)
@@ -322,13 +403,45 @@ public class HunterAgent : SteeringAgent
         if (direction.sqrMagnitude > 0.001f) transform.forward = direction;
     }
 
+    /// <summary>
+    /// Pursuit steering used only for the final leg towards a boid that is
+    /// already inside the hunter's line of sight.
+    /// </summary>
+    public void PursueTarget(PreyAgent target)
+    {
+        if (target == null) return;
+
+        Vector3 position = target.transform.position;
+        float distance = Vector3.Distance(transform.position, position);
+        float prediction = maxSpeed > 0.01f ? distance / maxSpeed : 0f;
+        Vector3 future = position + target.Velocity * prediction;
+
+        Vector3 offset = future - transform.position;
+        offset.y = 0f;
+
+        if (offset.sqrMagnitude < 0.0001f)
+        {
+            Halt();
+            return;
+        }
+
+        ApplyAcceleration(Steer(offset.normalized * maxSpeed), DeltaTime);
+        Face(future);
+    }
+
     public bool TryAttack(PreyAgent target)
     {
-        if (target == null || attackTimer < attackCooldown) return false;
+        if (target == null || target.IsDead || target.IsCollected) return false;
+        if (!CanAttack()) return false;
 
         attackTimer = 0f;
         target.ApplyDamage(attackDamage, transform.position);
         return true;
+    }
+
+    public void ResetGatherTimer()
+    {
+        gatherTimer = 0f;
     }
 
     public bool GatherTick(PreyAgent target)
@@ -347,19 +460,66 @@ public class HunterAgent : SteeringAgent
 
     public void ApplyDamage(int amount, Vector3 source)
     {
-        if (IsDead) return;
+        if (dead) return;
 
         health -= amount;
         if (health > 0) return;
 
+        Kill();
+    }
+
+    public void Kill()
+    {
+        if (dead) return;
+
+        dead = true;
         health = 0;
+        respawnTimer = respawnTime;
+        Velocity = Vector3.zero;
+        ClearPath();
+        if (vision != null) vision.Forget();
+        SetVisible(false);
         ChangeState(HunterStateId.Dead);
     }
 
-    public void MarkEscaped()
+    private void Respawn()
     {
-        escaped = true;
-        Halt();
+        dead = false;
+        health = maxHealth;
+        Collected = 0;
+        transform.position = InitialSpawn;
+        Velocity = Vector3.zero;
+        ClearPath();
+        if (vision != null) vision.Forget();
+        SafeZoneTarget = transform.position;
+        SafeZoneTargetName = "-";
+        SetVisible(true);
+        ResetColor();
+        ChangeState(HunterStateId.Search);
+    }
+
+    /// <summary>
+    /// Reached the exit: the run is completed, the hunter reappears in the
+    /// initial zone with the gather counter reset and starts searching again.
+    /// </summary>
+    public void CompleteRun()
+    {
+        RunsCompleted++;
+        Collected = 0;
+        transform.position = InitialSpawn;
+        Velocity = Vector3.zero;
+        ClearPath();
+        if (vision != null) vision.Forget();
+        SafeZoneTarget = transform.position;
+        SafeZoneTargetName = "-";
+        ResetColor();
+        ChangeState(HunterStateId.Search);
+    }
+
+    private void SetVisible(bool visible)
+    {
+        if (body != null) body.enabled = visible;
+        if (line != null) line.enabled = visible;
     }
 
     public void SetColor(Color color)
@@ -379,25 +539,45 @@ public class HunterAgent : SteeringAgent
 
     public void SetGoal(int value)
     {
-        goal = Mathf.Max(1, value);
+        requiredGathers = Mathf.Max(1, value);
     }
+
+    public Vector3 InitialSpawn => new Vector3(
+        LevelLayout.InitialZone.x + LevelLayout.InitialZone.width * 0.5f,
+        1f,
+        LevelLayout.InitialZone.y + LevelLayout.InitialZone.height * 0.5f);
 
     public Vector3 ExitPosition => new Vector3(
         LevelLayout.ExitZone.x + LevelLayout.ExitZone.width * 0.5f,
         transform.position.y,
         LevelLayout.ExitZone.y + LevelLayout.ExitZone.height * 0.5f);
 
+    public Vector3 HuntingGroundCenter => new Vector3(
+        LevelLayout.HuntingGround.x + LevelLayout.HuntingGround.width * 0.5f,
+        transform.position.y,
+        LevelLayout.HuntingGround.y + LevelLayout.HuntingGround.height * 0.5f);
+
     public bool IsInsideExitZone()
     {
-        Vector2Int cell = new Vector2Int(
-            Mathf.FloorToInt(transform.position.x),
-            Mathf.FloorToInt(transform.position.z));
+        return LevelLayout.ExitZone.Contains(CellPosition());
+    }
 
-        return LevelLayout.ExitZone.Contains(cell);
+    public bool IsInsideHuntingGround()
+    {
+        return LevelLayout.HuntingGround.Contains(CellPosition());
     }
 
     public bool IsInsideSafeZone()
     {
+        Vector2Int cell = CellPosition();
+
+        if (graph != null)
+        {
+            graph.EnsureBuilt();
+            Node node = graph.GetNode(cell);
+            if (node != null && node.CellType == CellType.SafeZone) return true;
+        }
+
         IReadOnlyList<Zone> zones = ZoneRegistry.Zones;
         for (int i = 0; i < zones.Count; i++)
         {
@@ -406,35 +586,62 @@ public class HunterAgent : SteeringAgent
             if (zone.Contains(transform.position)) return true;
         }
 
-        return false;
+        return LevelLayout.SafeZoneA.Contains(cell) || LevelLayout.SafeZoneB.Contains(cell);
     }
 
+    /// <summary>
+    /// Nearest safe zone measured by the length of the A* path, as required by
+    /// the statement (not by straight-line distance).
+    /// </summary>
     public Vector3 NearestSafeZone()
     {
+        graph.EnsureBuilt();
+        Node start = graph.GetNearestNode(transform.position);
+
         Vector3 best = transform.position;
-        float bestDistance = float.MaxValue;
+        string bestName = "-";
+        int bestLength = int.MaxValue;
 
         IReadOnlyList<Zone> zones = ZoneRegistry.Zones;
+        bool found = false;
+
         for (int i = 0; i < zones.Count; i++)
         {
             Zone zone = zones[i];
             if (zone == null || zone.Type != ZoneType.SafeZone) continue;
 
-            float distance = (zone.Center - transform.position).sqrMagnitude;
-            if (distance >= bestDistance) continue;
-
-            bestDistance = distance;
-            best = zone.Center;
+            found = true;
+            ConsiderSafeZone(zone.Center, zone.name, start, ref best, ref bestName, ref bestLength);
         }
 
-        if (bestDistance < float.MaxValue) return best;
+        if (!found)
+        {
+            ConsiderSafeZone(RectCenter(LevelLayout.SafeZoneA), "SafeZoneA", start, ref best, ref bestName, ref bestLength);
+            ConsiderSafeZone(RectCenter(LevelLayout.SafeZoneB), "SafeZoneB", start, ref best, ref bestName, ref bestLength);
+        }
 
-        Transform threat = ThreatRegistry.FindNearest(transform.position, 100f, transform);
-        if (threat == null) return transform.position;
+        SafeZoneTarget = best;
+        SafeZoneTargetName = bestName;
+        return best;
+    }
 
-        Vector3 escape = transform.position - threat.position;
-        escape.y = 0f;
-        return transform.position + escape.normalized * 10f;
+    private void ConsiderSafeZone(
+        Vector3 center,
+        string zoneName,
+        Node start,
+        ref Vector3 best,
+        ref string bestName,
+        ref int bestLength)
+    {
+        Node goal = graph.GetNearestNode(center);
+        if (start == null || goal == null) return;
+
+        List<Node> route = AStar.FindPath(graph, start, goal, graph.IsWalkable);
+        if (route.Count == 0 || route.Count >= bestLength) return;
+
+        bestLength = route.Count;
+        best = center;
+        bestName = zoneName;
     }
 
     public Vector3 RandomSearchPoint()
@@ -459,6 +666,116 @@ public class HunterAgent : SteeringAgent
         return nodes[Random.Range(0, nodes.Count)].WorldPosition;
     }
 
+    public int ActiveInterestObjects
+    {
+        get
+        {
+            for (int i = interestObjects.Count - 1; i >= 0; i--)
+                if (interestObjects[i] == null) interestObjects.RemoveAt(i);
+
+            return interestObjects.Count;
+        }
+    }
+
+    /// <summary>
+    /// While searching inside the hunting ground, spawns an interest object
+    /// every interval as long as fewer than five are active.
+    /// </summary>
+    public void TickInterest(float deltaTime)
+    {
+        interestTimer += deltaTime;
+        if (interestTimer < interestSpawnInterval) return;
+
+        interestTimer = 0f;
+        if (!IsInsideHuntingGround()) return;
+        if (ActiveInterestObjects >= maxInterestObjects) return;
+
+        Vector3 point = RandomHuntingPoint();
+        SpawnInterestObject(point);
+    }
+
+    private Vector3 RandomHuntingPoint()
+    {
+        graph.EnsureBuilt();
+
+        IReadOnlyList<Node> nodes = graph.AllNodes;
+        for (int attempt = 0; attempt < 32; attempt++)
+        {
+            Node node = nodes[Random.Range(0, nodes.Count)];
+            if (node.CellType == CellType.HuntingGround) return node.WorldPosition;
+        }
+
+        return HuntingGroundCenter;
+    }
+
+    private void SpawnInterestObject(Vector3 point)
+    {
+        GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        go.name = "InterestObject";
+        go.transform.position = point + Vector3.up * 0.4f;
+        go.transform.localScale = Vector3.one * 0.5f;
+
+        Collider collider = go.GetComponent<Collider>();
+        if (collider != null) DestroyNow(collider);
+
+        Renderer renderer = go.GetComponent<Renderer>();
+        if (renderer != null && interestMaterial != null) renderer.sharedMaterial = interestMaterial;
+
+        go.AddComponent<InterestObject>();
+
+        if (interestRoot == null)
+        {
+            GameObject rootObject = new GameObject("InterestObjects");
+            interestRoot = rootObject.transform;
+            interestRoot.SetParent(transform.parent, false);
+        }
+
+        go.transform.SetParent(interestRoot, true);
+        interestObjects.Add(go);
+    }
+
+    public void ClearInterestObjects()
+    {
+        for (int i = 0; i < interestObjects.Count; i++)
+            if (interestObjects[i] != null) DestroyNow(interestObjects[i]);
+
+        interestObjects.Clear();
+
+        if (interestRoot != null) DestroyNow(interestRoot.gameObject);
+        interestRoot = null;
+    }
+
+    private static void DestroyNow(Object target)
+    {
+        if (target == null) return;
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            Object.DestroyImmediate(target);
+            return;
+        }
+#endif
+        Object.Destroy(target);
+    }
+
+    private Vector2Int CellPosition()
+    {
+        return new Vector2Int(
+            Mathf.FloorToInt(transform.position.x),
+            Mathf.FloorToInt(transform.position.z));
+    }
+
+    private Vector3 RectCenter(RectInt rect)
+    {
+        return new Vector3(
+            rect.x + rect.width * 0.5f,
+            transform.position.y,
+            rect.y + rect.height * 0.5f);
+    }
+
+    private Vector3 EyePosition => transform.position + Vector3.up * eyeHeight;
+
     private void DrawPath()
     {
         if (line == null) return;
@@ -472,13 +789,13 @@ public class HunterAgent : SteeringAgent
     {
         if (!GizmoSettings.CombatRadii) return;
 
-        Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.6f);
-        Gizmos.DrawWireSphere(transform.position, attackRange);
-
         Gizmos.color = new Color(0.3f, 1f, 0.6f, 0.45f);
-        Gizmos.DrawWireSphere(transform.position, gatherRange);
+        Gizmos.DrawWireSphere(transform.position, visionRange);
 
-        Gizmos.color = new Color(1f, 0.5f, 0.1f, 0.45f);
-        Gizmos.DrawWireSphere(transform.position, fleeRadius);
+        Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.6f);
+        Gizmos.DrawWireSphere(transform.position, meleeAttackRange);
+
+        Gizmos.color = new Color(1f, 0.8f, 0.2f, 0.45f);
+        Gizmos.DrawWireSphere(transform.position, rangeAttackRange);
     }
 }

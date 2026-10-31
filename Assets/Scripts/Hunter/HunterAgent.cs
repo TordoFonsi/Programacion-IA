@@ -46,6 +46,8 @@ public class HunterAgent : SteeringAgent
     private Graph graph;
     private VisionSensor vision;
     private LineRenderer line;
+    private LineRenderer attackLine;
+    private float attackFlashTimer;
     private StateMachine stateMachine;
     private Renderer body;
     private MaterialPropertyBlock block;
@@ -85,6 +87,95 @@ public class HunterAgent : SteeringAgent
     public float SafeZoneWaitTime => safeZoneWaitTime;
     public int StateChanges { get; private set; }
     public WolfAgent DetectedWolf { get; private set; }
+
+    public static readonly Color SearchColor = new Color(0.35f, 0.80f, 1.00f);
+    public static readonly Color AttackColor = new Color(0.95f, 0.20f, 0.20f);
+    public static readonly Color GatherColor = new Color(0.30f, 0.85f, 0.35f);
+    public static readonly Color ExitColor = new Color(0.30f, 0.50f, 0.95f);
+    public static readonly Color FleeColor = new Color(1.00f, 0.85f, 0.20f);
+    public static readonly Color DeadColor = new Color(0.30f, 0.27f, 0.25f);
+
+    public static Color StateColor(HunterStateId id)
+    {
+        switch (id)
+        {
+            case HunterStateId.Attack: return AttackColor;
+            case HunterStateId.Gather: return GatherColor;
+            case HunterStateId.Exit: return ExitColor;
+            case HunterStateId.Flee: return FleeColor;
+            case HunterStateId.Dead: return DeadColor;
+            default: return SearchColor;
+        }
+    }
+
+    /// <summary>
+    /// What the hunter is doing right now, in words. Used by the HUD so the
+    /// player can tell a melee attack from a ranged one, a gather in progress,
+    /// a flee towards a specific safe zone, and so on.
+    /// </summary>
+    public string ActionLabel
+    {
+        get
+        {
+            switch (StateId)
+            {
+                case HunterStateId.Dead:
+                    return $"Muerto - reaparece en {RespawnRemaining:0.0} s";
+
+                case HunterStateId.Flee:
+                    if (IsInsideSafeZone())
+                    {
+                        float wait = Mathf.Max(0f, safeZoneWaitTime - FleeWait);
+                        return $"Refugiado en {SafeZoneTargetName} - sale en {wait:0.0} s";
+                    }
+
+                    return $"Huyendo a {SafeZoneTargetName} ({path.Count} nodos)";
+
+                case HunterStateId.Exit:
+                    return $"Yendo a la salida ({path.Count} nodos)";
+
+                case HunterStateId.Gather:
+                    return $"Recolectando boid ({GatherProgress * 100f:0}%)";
+
+                case HunterStateId.Attack:
+                    return AttackMode;
+
+                default:
+                    return DetectedWolf != null ? "Alerta: lobo a la vista" : "Explorando el coto";
+            }
+        }
+    }
+
+    public string TargetLabel
+    {
+        get
+        {
+            if (DetectedWolf != null)
+            {
+                float distance = Vector3.Distance(transform.position, DetectedWolf.transform.position);
+                return $"Lobo {DetectedWolf.WolfName} ({distance:0.0} u)";
+            }
+
+            if (vision != null && vision.Target != null && vision.Target.IsActive)
+            {
+                float distance = Vector3.Distance(transform.position, vision.Target.transform.position);
+                return $"Boid {vision.Target.name} ({distance:0.0} u)";
+            }
+
+            if (vision != null && vision.HasTarget) return "Boid (memoria)";
+
+            return "Sin objetivo";
+        }
+    }
+
+    public float GatherProgress => gatherTime > 0.01f ? Mathf.Clamp01(gatherTimer / gatherTime) : 1f;
+    public string AttackMode { get; private set; } = "-";
+    public float FleeWait { get; set; }
+
+    public void SetAttackMode(string mode)
+    {
+        AttackMode = mode;
+    }
     public Vector3 SafeZoneTarget { get; private set; }
     public string SafeZoneTargetName { get; private set; } = "-";
     public bool HasSafeZoneTarget => SafeZoneTargetName != "-";
@@ -116,6 +207,9 @@ public class HunterAgent : SteeringAgent
         vision = GetComponent<VisionSensor>();
         if (vision == null) vision = gameObject.AddComponent<VisionSensor>();
         vision.Configure(visionRange, fieldOfView, 3f, obstacleMask);
+
+        EnsureAttackLine();
+        ApplyStateColor(HunterStateId.Search);
 
         health = maxHealth;
         dead = false;
@@ -181,6 +275,12 @@ public class HunterAgent : SteeringAgent
 
         DeltaTime = deltaTime;
 
+        if (attackFlashTimer > 0f)
+        {
+            attackFlashTimer -= deltaTime;
+            if (attackFlashTimer <= 0f && attackLine != null) attackLine.enabled = false;
+        }
+
         if (dead)
         {
             respawnTimer -= deltaTime;
@@ -202,7 +302,51 @@ public class HunterAgent : SteeringAgent
 
         StateChanges++;
         StateId = id;
+        ApplyStateColor(id);
         stateMachine.ChangeState(id);
+    }
+
+    private void ApplyStateColor(HunterStateId id)
+    {
+        SetColor(StateColor(id));
+    }
+
+    /// <summary>
+    /// Short lived line from the hunter to its target, so a melee hit and a
+    /// ranged hit are both visible in the Game view.
+    /// </summary>
+    public void FlashAttack(Vector3 target, bool melee)
+    {
+        if (attackLine == null) return;
+
+        Color color = melee
+            ? new Color(1f, 0.25f, 0.20f, 0.95f)
+            : new Color(1f, 0.65f, 0.15f, 0.90f);
+
+        attackLine.startColor = color;
+        attackLine.endColor = color;
+        attackLine.positionCount = 2;
+        attackLine.SetPosition(0, transform.position + Vector3.up * 0.9f);
+        attackLine.SetPosition(1, target + Vector3.up * 0.5f);
+        attackLine.enabled = true;
+
+        attackFlashTimer = 0.3f;
+    }
+
+    private void EnsureAttackLine()
+    {
+        if (attackLine != null || line == null) return;
+
+        GameObject go = new GameObject("AttackFlash");
+        go.transform.SetParent(transform, false);
+
+        attackLine = go.AddComponent<LineRenderer>();
+        attackLine.useWorldSpace = true;
+        attackLine.widthMultiplier = 0.16f;
+        attackLine.numCapVertices = 2;
+        attackLine.positionCount = 0;
+        attackLine.sharedMaterial = line.sharedMaterial;
+        attackLine.enabled = false;
     }
 
     public bool TryHigherPriority(HunterStateId current)
@@ -520,6 +664,7 @@ public class HunterAgent : SteeringAgent
     {
         if (body != null) body.enabled = visible;
         if (line != null) line.enabled = visible;
+        if (attackLine != null && !visible) attackLine.enabled = false;
     }
 
     public void SetColor(Color color)

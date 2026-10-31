@@ -22,12 +22,12 @@ public static class LevelBuilder
         EnsureFolder(MeshFolder);
         ClearMeshes();
 
-        Material floor = CreateMaterial("Floor", new Color(0.85f, 0.82f, 0.74f));
-        Material wall = CreateMaterial("Wall", new Color(0.18f, 0.19f, 0.22f));
-        Material hunting = CreateMaterial("HuntingGround", new Color(0.95f, 0.72f, 0.35f));
-        Material initial = CreateMaterial("InitialZone", new Color(0.45f, 0.75f, 0.55f));
-        Material safe = CreateMaterial("SafeZone", new Color(0.65f, 0.45f, 0.80f));
-        Material exit = CreateMaterial("ExitZone", new Color(0.40f, 0.65f, 0.90f));
+        Material floor = CreateMaterial("Floor", LevelPalette.Floor);
+        Material wall = CreateMaterial("Wall", LevelPalette.Wall);
+        Material hunting = CreateMaterial("HuntingGround", LevelPalette.HuntingGround);
+        Material initial = CreateMaterial("InitialZone", LevelPalette.InitialZone);
+        Material safe = CreateMaterial("SafeZone", LevelPalette.SafeZone);
+        Material exit = CreateMaterial("ExitZone", LevelPalette.ExitZone);
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         Transform root = new GameObject("Level").transform;
@@ -148,10 +148,10 @@ public static class LevelBuilder
         GameObject go = new GameObject("Parcial2Bootstrap");
         go.transform.SetParent(parent, false);
 
-        Material prey = CreateMaterial("Prey", new Color(0.97f, 0.96f, 0.92f));
-        Material hunter = CreateMaterial("Hunter", new Color(0.92f, 0.25f, 0.3f));
-        Material hunterPath = CreateMaterial("HunterPath", new Color(1f, 0.6f, 0.2f), "Universal Render Pipeline/Unlit");
-        Material wolf = CreateMaterial("Wolf", new Color(0.42f, 0.44f, 0.48f));
+        Material prey = CreateMaterial("Prey", LevelPalette.Prey);
+        Material hunter = CreateMaterial("Hunter", HunterAgent.SearchColor);
+        Material hunterPath = CreateMaterial("HunterPath", LevelPalette.Path, "Universal Render Pipeline/Unlit");
+        Material wolf = CreateMaterial("Wolf", WolfAgent.PatrolColor);
 
         Parcial2Bootstrap bootstrap = go.AddComponent<Parcial2Bootstrap>();
         bootstrap.Configure(graph, prey, hunter, hunterPath, wolf);
@@ -161,12 +161,20 @@ public static class LevelBuilder
     {
         GameObject go = new GameObject("Main Camera");
         go.tag = "MainCamera";
-        go.transform.position = new Vector3(50f, 58f, -18f);
-        go.transform.rotation = Quaternion.Euler(50f, 0f, 0f);
+        go.transform.position = new Vector3(LevelLayout.Width * 0.5f, 90f, LevelLayout.Height * 0.5f);
+        go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
         Camera camera = go.AddComponent<Camera>();
-        camera.fieldOfView = 50f;
+        camera.orthographic = true;
+        camera.orthographicSize = LevelLayout.Height * 0.5f + 3f;
+        camera.nearClipPlane = 0.1f;
+        camera.farClipPlane = 180f;
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = LevelPalette.Background;
         go.AddComponent<AudioListener>();
+
+        TopDownCamera topDown = go.AddComponent<TopDownCamera>();
+        topDown.Apply();
     }
 
     private static void CreateLight()

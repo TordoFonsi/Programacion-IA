@@ -55,25 +55,39 @@ public class HunterAttackState : State
 
         Vector3 offset = target.transform.position - agent.transform.position;
         offset.y = 0f;
+        float distance = offset.magnitude;
 
-        if (offset.magnitude <= agent.MeleeAttackRange)
+        if (distance <= agent.MeleeAttackRange)
         {
+            agent.SetAttackMode($"Ataque melee ({distance:0.0} u)");
             agent.Halt();
             agent.Face(target.transform.position);
 
-            if (agent.TryAttack(target)) agent.ChangeState(HunterStateId.Search);
+            if (agent.TryAttack(target))
+            {
+                agent.FlashAttack(target.transform.position, true);
+                agent.ChangeState(HunterStateId.Search);
+            }
+
             return;
         }
 
-        if (offset.magnitude <= agent.RangeAttackRange)
+        if (distance <= agent.RangeAttackRange)
         {
+            agent.SetAttackMode($"Ataque a distancia ({distance:0.0} u)");
             agent.Halt();
             agent.Face(target.transform.position);
 
-            if (agent.TryAttack(target)) agent.ChangeState(HunterStateId.Search);
+            if (agent.TryAttack(target))
+            {
+                agent.FlashAttack(target.transform.position, false);
+                agent.ChangeState(HunterStateId.Search);
+            }
+
             return;
         }
 
+        agent.SetAttackMode($"Persiguiendo boid ({distance:0.0} u)");
         agent.PursueTarget(target);
     }
 }
@@ -174,15 +188,18 @@ public class HunterFleeState : State
         {
             agent.Halt();
             waitTimer += agent.DeltaTime;
+            agent.FleeWait = waitTimer;
 
             if (waitTimer < agent.SafeZoneWaitTime) return;
 
             waitTimer = 0f;
+            agent.FleeWait = 0f;
             agent.ChangeState(agent.PostFleeState());
             return;
         }
 
         waitTimer = 0f;
+        agent.FleeWait = 0f;
         repathTimer -= agent.DeltaTime;
 
         if (repathTimer <= 0f)
@@ -207,7 +224,7 @@ public class HunterDeadState : State
     public override void Enter()
     {
         agent.Halt();
-        agent.SetColor(new Color(0.25f, 0.22f, 0.2f));
+        agent.SetColor(HunterAgent.DeadColor);
     }
 
     public override void Update()

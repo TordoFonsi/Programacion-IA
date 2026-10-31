@@ -101,7 +101,7 @@ public class PreyAgent : SteeringAgent
         timer = corpseTime;
         CurrentBehaviour = "Dead";
         Velocity = Vector3.zero;
-        ApplyColor(new Color(0.35f, 0.32f, 0.3f));
+        ApplyColor(LevelPalette.PreyDead);
     }
 
     public bool Collect()

@@ -113,11 +113,11 @@ public class Parcial2Bootstrap : MonoBehaviour
         line.widthMultiplier = 0.18f;
         line.numCapVertices = 2;
         line.sharedMaterial = hunterPathMaterial;
-        line.startColor = new Color(1f, 0.55f, 0.15f);
-        line.endColor = new Color(1f, 0.9f, 0.3f);
+        line.startColor = LevelPalette.Path;
+        line.endColor = LevelPalette.Path;
 
         HunterAgent hunter = hunterObject.AddComponent<HunterAgent>();
-        hunter.Configure(graph, hunterMaterial, line, new Color(0.92f, 0.25f, 0.3f), hunterSpeed, hunterForce, preyMaterial);
+        hunter.Configure(graph, hunterMaterial, line, HunterAgent.SearchColor, hunterSpeed, hunterForce, preyMaterial);
         return hunter;
     }
 
@@ -151,11 +151,11 @@ public class Parcial2Bootstrap : MonoBehaviour
             line.widthMultiplier = 0.12f;
             line.numCapVertices = 2;
             line.sharedMaterial = hunterPathMaterial;
-            line.startColor = new Color(1f, 0.35f, 0.2f, 0.8f);
-            line.endColor = new Color(1f, 0.8f, 0.25f, 0.8f);
+            line.startColor = LevelPalette.Path;
+            line.endColor = LevelPalette.Path;
             line.positionCount = 0;
 
-            wolf.Configure(graph, wolfMaterial, new Color(0.42f, 0.44f, 0.48f), wolfSpeed, wolfForce, route, line);
+            wolf.Configure(graph, wolfMaterial, WolfAgent.PatrolColor, wolfSpeed, wolfForce, route, line);
             pack.Register(wolf);
         }
 
@@ -164,7 +164,8 @@ public class Parcial2Bootstrap : MonoBehaviour
 
     private void CreateFeedback(PreyFlock flock, HunterAgent hunter, WolfPack pack)
     {
-        Transform lastKnown = CreateMarker("LastKnownMarker", hunterPathMaterial, 0.55f);
+        Transform lastKnown = CreateMarker("LastKnownMarker", hunterPathMaterial, 0.55f, LevelPalette.LastKnown);
+        lastKnown.gameObject.SetActive(false);
 
         GameObject feedbackObject = new GameObject("HunterHud");
         feedbackObject.transform.SetParent(transform, false);
@@ -176,10 +177,15 @@ public class Parcial2Bootstrap : MonoBehaviour
         WolfHud wolfHud = wolfHudObject.AddComponent<WolfHud>();
         wolfHud.Configure(pack, hunter);
 
+        GameObject legendObject = new GameObject("LegendHud");
+        legendObject.transform.SetParent(transform, false);
+        LegendHud legend = legendObject.AddComponent<LegendHud>();
+        legend.Configure(hunter, pack);
+
         for (int i = 0; i < flock.Agents.Count; i++)
         {
             PreyAgent prey = flock.Agents[i];
-            Transform icon = CreateMarker($"Detection_{i}", hunterPathMaterial, 0.22f);
+            Transform icon = CreateMarker($"Detection_{i}", hunterPathMaterial, 0.22f, LevelPalette.Detection);
 
             DetectionMarker marker = icon.gameObject.AddComponent<DetectionMarker>();
             marker.Configure(prey, hunter, icon);
@@ -189,7 +195,7 @@ public class Parcial2Bootstrap : MonoBehaviour
         }
     }
 
-    private Transform CreateMarker(string name, Material material, float size)
+    private Transform CreateMarker(string name, Material material, float size, Color color)
     {
         GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         go.name = name;
@@ -204,7 +210,16 @@ public class Parcial2Bootstrap : MonoBehaviour
         }
 
         Renderer renderer = go.GetComponent<Renderer>();
-        if (renderer != null) renderer.sharedMaterial = material;
+        if (renderer != null)
+        {
+            renderer.sharedMaterial = material;
+
+            MaterialPropertyBlock block = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+            block.SetColor("_BaseColor", color);
+            block.SetColor("_Color", color);
+            renderer.SetPropertyBlock(block);
+        }
 
         return go.transform;
     }

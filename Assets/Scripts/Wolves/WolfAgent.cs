@@ -42,6 +42,23 @@ public class WolfAgent : SteeringAgent
 
     public float DeltaTime { get; private set; }
     public string CurrentBehaviour { get; private set; } = "Patrol";
+
+    public static readonly Color PatrolColor = new Color(0.55f, 0.58f, 0.62f);
+    public static readonly Color AlertColor = new Color(0.95f, 0.55f, 0.15f);
+    public static readonly Color SearchColor = new Color(0.85f, 0.35f, 0.75f);
+    public static readonly Color ChaseColor = new Color(0.90f, 0.15f, 0.15f);
+
+    public static Color BehaviorColor(string behaviour)
+    {
+        switch (behaviour)
+        {
+            case "Chase": return ChaseColor;
+            case "Alert": return AlertColor;
+            case "Search": return SearchColor;
+            default: return PatrolColor;
+        }
+    }
+
     public HunterAgent Target { get; private set; }
     public Vector3 LastKnownPosition { get; private set; }
     public bool HasAlert => hasAlert;
@@ -162,7 +179,7 @@ public class WolfAgent : SteeringAgent
     private void Chase()
     {
         CurrentBehaviour = "Chase";
-        SetColor(new Color(0.85f, 0.2f, 0.15f));
+        SetColor(ChaseColor);
 
         Vector3 offset = Target.transform.position - transform.position;
         offset.y = 0f;
@@ -193,6 +210,7 @@ public class WolfAgent : SteeringAgent
     private void MoveToLastKnown()
     {
         CurrentBehaviour = "Alert";
+        SetColor(AlertColor);
 
         Vector3 offset = LastKnownPosition - transform.position;
         offset.y = 0f;
@@ -224,7 +242,7 @@ public class WolfAgent : SteeringAgent
     private void Search()
     {
         CurrentBehaviour = "Search";
-        SetColor(new Color(0.95f, 0.6f, 0.15f));
+        SetColor(SearchColor);
 
         searchTimer -= DeltaTime;
         transform.Rotate(Vector3.up, 90f * DeltaTime, Space.World);
@@ -237,6 +255,7 @@ public class WolfAgent : SteeringAgent
     private void Patrol()
     {
         CurrentBehaviour = "Patrol";
+        SetColor(PatrolColor);
 
         if (patrolRoute == null || patrolRoute.Length == 0) return;
 

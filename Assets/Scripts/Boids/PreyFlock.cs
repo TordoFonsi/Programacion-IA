@@ -56,7 +56,7 @@ public class PreyFlock : MonoBehaviour
             }
 
             PreyAgent agent = go.AddComponent<PreyAgent>();
-            agent.Configure(this, preyMaterial, new Color(0.97f, 0.96f, 0.92f), speed, force);
+            agent.Configure(this, preyMaterial, LevelPalette.Prey, speed, force);
 
             agents.Add(agent);
             PreyRegistry.Register(agent);

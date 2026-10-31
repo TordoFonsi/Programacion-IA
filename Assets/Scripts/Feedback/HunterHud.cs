@@ -1,18 +1,18 @@
 using UnityEngine;
 
 /// <summary>
-/// Hunter feedback. Shows the state (with its colour), what the hunter is
-/// doing right now (melee or ranged attack, gathering progress, flee target),
-/// the current objective and the A* / safe zone information.
+/// Compact hunter feedback. Only the data the statement asks for is shown:
+/// state, current action, collections, detection, last known position, A*
+/// path and chosen safe zone. Rows appear only when they have something to
+/// say, so the panel stays out of the way.
 /// </summary>
 public class HunterHud : MonoBehaviour
 {
     [SerializeField] private HunterAgent hunter;
     [SerializeField] private Transform lastKnownMarker;
 
-    private const float PanelWidth = 430f;
+    private const float PanelWidth = 340f;
     private const float RowHeight = 19f;
-    private const float PanelHeight = 216f;
 
     private GUIStyle style;
     private GUIStyle titleStyle;
@@ -44,24 +44,45 @@ public class HunterHud : MonoBehaviour
 
         EnsureStyles();
 
+        bool dead = hunter.IsDead;
+        string state = dead
+            ? $"Muerto ({hunter.RespawnRemaining:0.0}s)"
+            : hunter.CurrentStateName;
+
+        string detection = DetectionLabel();
+        bool showDetection = detection != null;
+
+        bool showLast = !dead && hunter.Vision != null &&
+                        hunter.Vision.HasTarget && !hunter.Vision.IsVisible;
+        Vector3 last = hunter.LastKnownPosition;
+
+        int pathNodes = hunter.CurrentPath.Count;
+        bool showPath = pathNodes > 0;
+        bool showSafe = hunter.StateId == HunterStateId.Flee && hunter.HasSafeZoneTarget;
+        bool gathering = hunter.StateId == HunterStateId.Gather;
+
+        // Rows that are always visible: state, action and collections.
+        int rows = 3;
+        if (showDetection) rows++;
+        if (showLast) rows++;
+        if (showPath) rows++;
+        if (showSafe) rows++;
+
+        float height = 8f + rows * RowHeight + (gathering ? 12f : 0f) + 24f;
+
         float x = 12f;
         float top = 12f;
 
         Color previous = GUI.color;
         GUI.color = new Color(0f, 0f, 0f, 0.62f);
-        GUI.DrawTexture(new Rect(x, top, PanelWidth, PanelHeight), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x, top, PanelWidth, height), Texture2D.whiteTexture);
         GUI.color = previous;
 
         float labelX = x + 12f;
         float y = top + 8f;
-        float column = PanelWidth * 0.5f;
 
         // State, with the same colour the hunter body has in the scene.
         Swatch(new Rect(labelX, y + 4f, 12f, 12f), HunterAgent.StateColor(hunter.StateId));
-
-        string state = hunter.IsDead
-            ? $"Muerto ({hunter.RespawnRemaining:0.0}s)"
-            : hunter.CurrentStateName;
 
         GUI.Label(new Rect(labelX + 19f, y, PanelWidth - 30f, RowHeight),
             $"Estado: {state}", titleStyle);
@@ -72,48 +93,55 @@ public class HunterHud : MonoBehaviour
         y += RowHeight;
 
         GUI.Label(new Rect(labelX, y, PanelWidth - 24f, RowHeight),
-            $"Objetivo: {hunter.TargetLabel}", style);
+            $"Recolectados: {hunter.Collected}/{hunter.Goal}", style);
         y += RowHeight;
 
-        TwoColumns(labelX, y, column,
-            $"Vida: {hunter.Health}",
-            $"Recolectados: {hunter.Collected}/{hunter.Goal}");
-        y += RowHeight;
+        if (showDetection)
+        {
+            GUI.Label(new Rect(labelX, y, PanelWidth - 24f, RowHeight),
+                $"Deteccion: {detection}", style);
+            y += RowHeight;
+        }
 
-        string detection = "Sin objetivo";
-        if (hunter.DetectedWolf != null) detection = $"Lobo {hunter.DetectedWolf.WolfName}";
-        else if (hunter.Vision != null && hunter.Vision.IsVisible) detection = "Boid detectado";
-        else if (hunter.Vision != null && hunter.Vision.HasTarget) detection = "Alerta (memoria)";
+        if (showLast)
+        {
+            GUI.Label(new Rect(labelX, y, PanelWidth - 24f, RowHeight),
+                $"Ultima posicion conocida: ({last.x:0.0}, {last.z:0.0})", style);
+            y += RowHeight;
+        }
 
-        TwoColumns(labelX, y, column,
-            $"Ciclos completados: {hunter.RunsCompleted}",
-            $"Deteccion: {detection}");
-        y += RowHeight;
+        if (showPath)
+        {
+            GUI.Label(new Rect(labelX, y, PanelWidth - 24f, RowHeight),
+                $"Camino A*: {pathNodes} nodos", style);
+            y += RowHeight;
+        }
 
-        Vector3 last = hunter.LastKnownPosition;
-        string lastPosition = hunter.Vision != null && hunter.Vision.HasTarget
-            ? $"({last.x:0.0}, {last.z:0.0})"
-            : "(sin datos)";
+        if (showSafe)
+        {
+            GUI.Label(new Rect(labelX, y, PanelWidth - 24f, RowHeight),
+                $"Zona segura: {hunter.SafeZoneTargetName}", style);
+            y += RowHeight;
+        }
 
-        GUI.Label(new Rect(labelX, y, PanelWidth - 24f, RowHeight),
-            $"Ultima posicion conocida: {lastPosition}", style);
-        y += RowHeight;
+        if (gathering)
+        {
+            DrawGatherBar(labelX, y + 3f, PanelWidth - 24f);
+            y += 12f;
+        }
 
-        string safeZone = hunter.HasSafeZoneTarget ? hunter.SafeZoneTargetName : "-";
-
-        TwoColumns(labelX, y, column,
-            $"Camino A*: {hunter.CurrentPath.Count} nodos",
-            $"Zona segura: {safeZone}");
-        y += RowHeight;
-
-        GUI.Label(new Rect(labelX, y, PanelWidth - 24f, RowHeight),
-            $"Rangos: melee {hunter.MeleeAttackRange:0.0} u / rango {hunter.RangeAttackRange:0.0} u", style);
-        y += RowHeight + 2f;
-
-        DrawGatherBar(labelX, y, PanelWidth - 24f);
-
-        GUI.Label(new Rect(labelX, y + 13f, PanelWidth - 24f, 16f),
+        GUI.Label(new Rect(labelX, y + 4f, PanelWidth - 24f, 16f),
             "Tecla L: leyenda de colores", smallStyle);
+    }
+
+    private string DetectionLabel()
+    {
+        if (hunter.DetectedWolf != null) return $"Lobo {hunter.DetectedWolf.WolfName}";
+
+        if (hunter.Vision == null) return null;
+        if (hunter.Vision.IsVisible) return "Boid detectado";
+        if (hunter.Vision.HasTarget) return "Alerta (memoria)";
+        return null;
     }
 
     private void DrawGatherBar(float x, float y, float width)
@@ -134,12 +162,6 @@ public class HunterHud : MonoBehaviour
         }
 
         GUI.color = previous;
-    }
-
-    private void TwoColumns(float x, float y, float column, string left, string right)
-    {
-        GUI.Label(new Rect(x, y, column - 8f, RowHeight), left, style);
-        GUI.Label(new Rect(x + column, y, column - 8f, RowHeight), right, style);
     }
 
     private void Swatch(Rect rect, Color color)

@@ -94,11 +94,11 @@ public static class LevelBuilder
 
     private static void BuildZones(Transform parent)
     {
-        CreateZone(parent, "Initial", ZoneType.Initial, LevelLayout.InitialZone, new Color(0.45f, 0.75f, 0.55f));
-        CreateZone(parent, "HuntingGround", ZoneType.HuntingGround, LevelLayout.HuntingGround, new Color(0.95f, 0.72f, 0.35f));
-        CreateZone(parent, "SafeZoneA", ZoneType.SafeZone, LevelLayout.SafeZoneA, new Color(0.65f, 0.45f, 0.80f));
-        CreateZone(parent, "SafeZoneB", ZoneType.SafeZone, LevelLayout.SafeZoneB, new Color(0.65f, 0.45f, 0.80f));
-        CreateZone(parent, "Exit", ZoneType.Exit, LevelLayout.ExitZone, new Color(0.40f, 0.65f, 0.90f));
+        CreateZone(parent, "Initial", ZoneType.Initial, LevelLayout.InitialZone, LevelPalette.InitialZone);
+        CreateZone(parent, "HuntingGround", ZoneType.HuntingGround, LevelLayout.HuntingGround, LevelPalette.HuntingGround);
+        CreateZone(parent, "SafeZoneA", ZoneType.SafeZone, LevelLayout.SafeZoneA, LevelPalette.SafeZone);
+        CreateZone(parent, "SafeZoneB", ZoneType.SafeZone, LevelLayout.SafeZoneB, LevelPalette.SafeZone);
+        CreateZone(parent, "Exit", ZoneType.Exit, LevelLayout.ExitZone, LevelPalette.ExitZone);
     }
 
     private static void CreateZone(Transform parent, string name, ZoneType type, RectInt rect, Color color)

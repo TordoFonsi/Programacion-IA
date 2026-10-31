@@ -74,6 +74,10 @@ public class LegendHud : MonoBehaviour
             LevelPalette.SafeZone, "Zona segura",
             LevelPalette.ExitZone, "Salida");
 
+        GUI.Label(new Rect(x + 12f, y + 1f, panelWidth - 24f, 16f),
+            "Zona inicial = spawn protegido (los lobos no entran)", hintStyle);
+        y += 16f;
+
         // ------------------------------------------------------------- hunter
         y = Header(x, y, "CAZADOR  (el color del cuerpo es su estado)");
 
@@ -100,6 +104,15 @@ public class LegendHud : MonoBehaviour
             WolfAgent.SearchColor, "Search", IsWolfIn("Search"),
             WolfAgent.ChaseColor, "Chase", IsWolfIn("Chase"));
 
+        // Each wolf draws its A* path with the colour of its patrol route.
+        y = Header(x, y, "RUTAS DE LOBOS  (color de su camino A*)");
+
+        y = Row4(x, y, quarter,
+            LevelPalette.RouteL1, "L1 oeste", false,
+            LevelPalette.RouteL2, "L2 norte", false,
+            LevelPalette.RouteL3, "L3 este", false,
+            LevelPalette.RouteL4, "L4 sur", false);
+
         y = Row2(x, y, column,
             LevelPalette.Path, "Camino A*",
             LevelPalette.LastKnown, "Ultima posicion conocida");
@@ -120,9 +133,11 @@ public class LegendHud : MonoBehaviour
 
     private float PanelHeight()
     {
-        return 24f + HeaderHeight + 3f * RowHeight
+        return 24f + HeaderHeight + 3f * RowHeight + 16f
              + HeaderHeight + 6f * RowHeight
-             + HeaderHeight + 2f * RowHeight
+             + HeaderHeight + 1f * RowHeight
+             + HeaderHeight + 1f * RowHeight
+             + 2f * RowHeight
              + HeaderHeight + 2f * RowHeight
              + 26f;
     }

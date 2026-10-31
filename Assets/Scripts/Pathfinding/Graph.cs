@@ -95,5 +95,10 @@ public class Graph : MonoBehaviour
 
     public bool IsWalkable(Node node) => node != null;
 
-    public bool IsWolfWalkable(Node node) => node != null && node.CellType != CellType.SafeZone;
+    /// <summary>
+    /// Wolves cannot path into safe zones (the hunter is untouchable there) nor
+    /// into the hunter spawn, otherwise the pack camps the respawn point.
+    /// </summary>
+    public bool IsWolfWalkable(Node node) =>
+        node != null && node.CellType != CellType.SafeZone && node.CellType != CellType.Initial;
 }

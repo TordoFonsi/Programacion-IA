@@ -17,7 +17,7 @@ public static class LevelLayout
 
     public static readonly RectInt InitialZone = new RectInt(1, 23, 11, 14);
     public static readonly RectInt ExitZone = new RectInt(88, 23, 11, 14);
-    public static readonly RectInt HuntingGround = new RectInt(30, 23, 40, 14);
+    public static readonly RectInt HuntingGround = new RectInt(35, 23, 30, 14);
     public static readonly RectInt SafeZoneA = new RectInt(71, 40, 8, 8);
     public static readonly RectInt SafeZoneB = new RectInt(21, 12, 8, 8);
 
@@ -29,19 +29,24 @@ public static class LevelLayout
         Fill(cells, new RectInt(13, 3, 74, 54), CellType.Floor);
         Fill(cells, new RectInt(20, 10, 60, 40), CellType.Solid);
 
+        // Salas norte y sur: mismo ancho y alineadas con el coto de caza.
         Fill(cells, new RectInt(35, 40, 30, 10), CellType.Floor);
         Fill(cells, new RectInt(40, 43, 20, 5), CellType.Solid);
         Fill(cells, new RectInt(35, 10, 30, 10), CellType.Floor);
         Fill(cells, new RectInt(40, 12, 20, 5), CellType.Solid);
 
         Fill(cells, HuntingGround, CellType.HuntingGround);
-        Fill(cells, new RectInt(19, 29, 11, 2), CellType.Floor);
-        Fill(cells, new RectInt(70, 29, 10, 2), CellType.Floor);
 
+        // Pasillo central: une la zona inicial, el coto y la salida.
+        Fill(cells, new RectInt(19, 29, 16, 2), CellType.Floor);
+        Fill(cells, new RectInt(65, 29, 15, 2), CellType.Floor);
+
+        // Zonas seguras: se entra por un pasillo que baja hasta el central,
+        // sin protuberancias hacia el anillo.
         Fill(cells, SafeZoneA, CellType.SafeZone);
-        Fill(cells, new RectInt(79, 43, 2, 2), CellType.SafeZone);
+        Fill(cells, new RectInt(71, 31, 2, 9), CellType.Floor);
         Fill(cells, SafeZoneB, CellType.SafeZone);
-        Fill(cells, new RectInt(19, 15, 2, 2), CellType.SafeZone);
+        Fill(cells, new RectInt(27, 20, 2, 9), CellType.Floor);
 
         Fill(cells, InitialZone, CellType.Initial);
         Fill(cells, new RectInt(11, 29, 3, 2), CellType.Initial);

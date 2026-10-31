@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public abstract class SteeringAgent : MonoBehaviour
@@ -63,5 +64,75 @@ public abstract class SteeringAgent : MonoBehaviour
     protected void Stop()
     {
         Velocity = Vector3.zero;
+    }
+
+    /// <summary>
+    /// Follows a list of graph nodes. The reach radius grows with the step,
+    /// the direction looks ahead to the next node and the speed drops on sharp
+    /// turns, so the agent turns instead of orbiting a node it can never land
+    /// on at full speed.
+    /// </summary>
+    protected bool FollowNodes(IReadOnlyList<Node> nodes, ref int index, float reach, float deltaTime)
+    {
+        if (nodes == null || nodes.Count == 0 || index >= nodes.Count)
+        {
+            Stop();
+            return true;
+        }
+
+        Vector3 position = transform.position;
+        reach = Mathf.Max(reach, maxSpeed * deltaTime * 1.5f);
+
+        while (index < nodes.Count)
+        {
+            Vector3 nodePosition = nodes[index].WorldPosition;
+            Vector3 delta = nodePosition - position;
+            delta.y = 0f;
+
+            if (delta.sqrMagnitude > reach * reach) break;
+
+            index++;
+        }
+
+        if (index >= nodes.Count)
+        {
+            Stop();
+            return true;
+        }
+
+        Vector3 target = nodes[index].WorldPosition;
+        target.y = position.y;
+
+        Vector3 offset = target - position;
+        offset.y = 0f;
+
+        if (index + 1 < nodes.Count && offset.magnitude < 2f)
+        {
+            Vector3 next = nodes[index + 1].WorldPosition;
+            next.y = position.y;
+
+            float blend = 1f - Mathf.Clamp01(offset.magnitude / 2f);
+            offset = Vector3.Lerp(offset, next - position, blend * 0.6f);
+            offset.y = 0f;
+        }
+
+        if (offset.sqrMagnitude < 0.0001f)
+        {
+            Stop();
+            return false;
+        }
+
+        Vector3 direction = offset.normalized;
+
+        float turn = Velocity.sqrMagnitude > 0.01f
+            ? Vector3.Angle(Velocity, direction) / 180f
+            : 0f;
+
+        float speed = maxSpeed * Mathf.Lerp(1f, 0.45f, turn);
+
+        if (index == nodes.Count - 1) speed *= Mathf.Clamp01(offset.magnitude / 1.5f);
+
+        ApplyAcceleration(Steer(direction * speed), deltaTime);
+        return false;
     }
 }

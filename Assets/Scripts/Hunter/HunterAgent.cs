@@ -129,10 +129,10 @@ public class HunterAgent : SteeringAgent
                         return $"Refugiado en {SafeZoneTargetName} - sale en {wait:0.0} s";
                     }
 
-                    return $"Huyendo a {SafeZoneTargetName} ({path.Count} nodos)";
+                    return "Huyendo a zona segura";
 
                 case HunterStateId.Exit:
-                    return $"Yendo a la salida ({path.Count} nodos)";
+                    return "Yendo a la salida";
 
                 case HunterStateId.Gather:
                     return $"Recolectando boid ({GatherProgress * 100f:0}%)";
@@ -267,6 +267,18 @@ public class HunterAgent : SteeringAgent
     private void Update()
     {
         Tick(Time.deltaTime);
+        TickAttackFlash(Time.deltaTime);
+    }
+
+    private void TickAttackFlash(float deltaTime)
+    {
+        if (attackFlashTimer <= 0f) return;
+
+        attackFlashTimer -= deltaTime;
+        if (attackFlashTimer > 0f) return;
+
+        attackFlashTimer = 0f;
+        if (attackLine != null) attackLine.enabled = false;
     }
 
     public void Tick(float deltaTime)
@@ -274,12 +286,6 @@ public class HunterAgent : SteeringAgent
         if (graph == null) return;
 
         DeltaTime = deltaTime;
-
-        if (attackFlashTimer > 0f)
-        {
-            attackFlashTimer -= deltaTime;
-            if (attackFlashTimer <= 0f && attackLine != null) attackLine.enabled = false;
-        }
 
         if (dead)
         {
@@ -325,6 +331,16 @@ public class HunterAgent : SteeringAgent
 
         attackLine.startColor = color;
         attackLine.endColor = color;
+
+        // URP/Unlit takes the colour from the material, not from the line
+        // gradient, so the flash needs its own material (sharing the path
+        // material would repaint the whole A* line).
+        if (attackLine.sharedMaterial != null)
+        {
+            attackLine.sharedMaterial.SetColor("_BaseColor", color);
+            attackLine.sharedMaterial.SetColor("_Color", color);
+        }
+
         attackLine.positionCount = 2;
         attackLine.SetPosition(0, transform.position + Vector3.up * 0.9f);
         attackLine.SetPosition(1, target + Vector3.up * 0.5f);
@@ -345,7 +361,8 @@ public class HunterAgent : SteeringAgent
         attackLine.widthMultiplier = 0.16f;
         attackLine.numCapVertices = 2;
         attackLine.positionCount = 0;
-        attackLine.sharedMaterial = line.sharedMaterial;
+        attackLine.sharedMaterial = new Material(line.sharedMaterial);
+        attackLine.sharedMaterial.name = "AttackFlash";
         attackLine.enabled = false;
     }
 
@@ -415,7 +432,11 @@ public class HunterAgent : SteeringAgent
     public bool ShouldFlee()
     {
         DetectedWolf = FindVisibleWolf();
-        return DetectedWolf != null;
+        if (DetectedWolf == null) return false;
+
+        // The hunter is already untouchable in its spawn or in a safe zone, so
+        // fleeing from there would only drag it back into the open.
+        return !IsProtected();
     }
 
     private WolfAgent FindVisibleWolf()
@@ -498,34 +519,7 @@ public class HunterAgent : SteeringAgent
 
     public void FollowPath(float deltaTime)
     {
-        if (HasArrived)
-        {
-            Halt();
-            return;
-        }
-
-        Vector3 target = path[pathIndex].WorldPosition;
-        target.y = transform.position.y;
-
-        Vector3 offset = target - transform.position;
-        offset.y = 0f;
-
-        if (offset.sqrMagnitude <= waypointDistance * waypointDistance)
-        {
-            pathIndex++;
-            if (HasArrived)
-            {
-                Halt();
-                return;
-            }
-
-            target = path[pathIndex].WorldPosition;
-            target.y = transform.position.y;
-            offset = target - transform.position;
-            offset.y = 0f;
-        }
-
-        ApplyAcceleration(Steer(offset.normalized * maxSpeed), deltaTime);
+        FollowNodes(path, ref pathIndex, waypointDistance, deltaTime);
     }
 
     public void Halt()
@@ -732,6 +726,30 @@ public class HunterAgent : SteeringAgent
         }
 
         return LevelLayout.SafeZoneA.Contains(cell) || LevelLayout.SafeZoneB.Contains(cell);
+    }
+
+    public bool IsInsideInitialZone()
+    {
+        Vector2Int cell = CellPosition();
+
+        if (graph != null)
+        {
+            graph.EnsureBuilt();
+            Node node = graph.GetNode(cell);
+            if (node != null && node.CellType == CellType.Initial) return true;
+        }
+
+        return LevelLayout.InitialZone.Contains(cell);
+    }
+
+    /// <summary>
+    /// Zones where the hunter cannot be seen nor captured: the safe zones and
+    /// its own spawn. Without protecting the spawn the pack camps the respawn
+    /// point and the run never restarts.
+    /// </summary>
+    public bool IsProtected()
+    {
+        return IsInsideSafeZone() || IsInsideInitialZone();
     }
 
     /// <summary>

@@ -88,7 +88,8 @@ public class HunterAttackState : State
         }
 
         agent.SetAttackMode($"Persiguiendo boid ({distance:0.0} u)");
-        agent.PursueTarget(target);
+        agent.SetDestination(target.transform.position);
+        agent.FollowPath(agent.DeltaTime);
     }
 }
 
@@ -167,6 +168,7 @@ public class HunterFleeState : State
     private readonly HunterAgent agent;
     private float repathTimer;
     private float waitTimer;
+    private Vector3 destination;
 
     public HunterFleeState(HunterAgent agent, StateMachine stateMachine) : base(stateMachine)
     {
@@ -177,6 +179,9 @@ public class HunterFleeState : State
     {
         repathTimer = 0f;
         waitTimer = 0f;
+        // The safe zone is chosen once per flee, so the hunter does not flip
+        // between two zones and get stuck at an entrance.
+        destination = agent.NearestSafeZone();
         agent.Halt();
     }
 
@@ -202,9 +207,9 @@ public class HunterFleeState : State
         agent.FleeWait = 0f;
         repathTimer -= agent.DeltaTime;
 
-        if (repathTimer <= 0f)
+        if (repathTimer <= 0f || agent.HasArrived)
         {
-            agent.SetDestination(agent.NearestSafeZone());
+            agent.SetDestination(destination);
             repathTimer = 0.5f;
         }
 

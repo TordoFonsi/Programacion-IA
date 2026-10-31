@@ -47,6 +47,9 @@ public static class HunterTests
 
         // Flee: a real wolf registered in the scene is detected with distance
         // and line of sight, and the hunter picks the nearest safe zone by A*.
+        // Leave the protected spawn first: the hunter does not flee from there.
+        hunter.transform.position = new Vector3(50f, 1f, 30f);
+
         GameObject packObject = new GameObject("Hunter Test Pack");
         WolfPack pack = packObject.AddComponent<WolfPack>();
         WolfAgent wolf = CreateWolf(graph, hunter.transform.position + new Vector3(0f, 0f, 4f), hunter.transform.position);

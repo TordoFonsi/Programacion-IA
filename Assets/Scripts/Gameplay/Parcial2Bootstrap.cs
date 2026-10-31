@@ -112,9 +112,9 @@ public class Parcial2Bootstrap : MonoBehaviour
         line.useWorldSpace = true;
         line.widthMultiplier = 0.18f;
         line.numCapVertices = 2;
-        line.sharedMaterial = hunterPathMaterial;
-        line.startColor = LevelPalette.Path;
-        line.endColor = LevelPalette.Path;
+        line.sharedMaterial = CreateLineMaterial(LevelPalette.Path);
+        line.startColor = Color.white;
+        line.endColor = Color.white;
 
         HunterAgent hunter = hunterObject.AddComponent<HunterAgent>();
         hunter.Configure(graph, hunterMaterial, line, HunterAgent.SearchColor, hunterSpeed, hunterForce, preyMaterial);
@@ -148,11 +148,11 @@ public class Parcial2Bootstrap : MonoBehaviour
 
             LineRenderer line = wolfObject.AddComponent<LineRenderer>();
             line.useWorldSpace = true;
-            line.widthMultiplier = 0.12f;
+            line.widthMultiplier = 0.14f;
             line.numCapVertices = 2;
-            line.sharedMaterial = hunterPathMaterial;
-            line.startColor = LevelPalette.Path;
-            line.endColor = LevelPalette.Path;
+            line.sharedMaterial = CreateLineMaterial(LevelPalette.RouteColor(i));
+            line.startColor = Color.white;
+            line.endColor = Color.white;
             line.positionCount = 0;
 
             wolf.Configure(graph, wolfMaterial, WolfAgent.PatrolColor, wolfSpeed, wolfForce, route, line);
@@ -193,6 +193,24 @@ public class Parcial2Bootstrap : MonoBehaviour
             Renderer iconRenderer = icon.GetComponent<Renderer>();
             if (iconRenderer != null) iconRenderer.enabled = false;
         }
+    }
+
+    /// <summary>
+    /// The URP/Unlit shader ignores LineRenderer start/end colours, so every
+    /// path needs its own material with the colour baked in. Otherwise all the
+    /// lines end up sharing the same colour.
+    /// </summary>
+    private static Material CreateLineMaterial(Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Unlit/Color");
+        if (shader == null) shader = Shader.Find("Sprites/Default");
+
+        Material material = new Material(shader);
+        material.name = "RuntimeLine";
+        material.SetColor("_BaseColor", color);
+        material.SetColor("_Color", color);
+        return material;
     }
 
     private Transform CreateMarker(string name, Material material, float size, Color color)

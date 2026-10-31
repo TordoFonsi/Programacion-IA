@@ -21,6 +21,7 @@ public class WolfAgent : SteeringAgent
     [Header("Search")]
     [SerializeField] private float searchDuration = 5f;
     [SerializeField] private float repathInterval = 0.5f;
+    [SerializeField] private float captureCooldown = 8f;
 
     private Graph graph;
     private WolfPack pack;
@@ -39,6 +40,7 @@ public class WolfAgent : SteeringAgent
     private float repathTimer;
     private bool hasAlert;
     private Vector3 lastSafePosition;
+    private float huntCooldown;
 
     public float DeltaTime { get; private set; }
     public string CurrentBehaviour { get; private set; } = "Patrol";
@@ -127,8 +129,12 @@ public class WolfAgent : SteeringAgent
 
         DeltaTime = deltaTime;
         repathTimer -= deltaTime;
+        huntCooldown = Mathf.Max(0f, huntCooldown - deltaTime);
 
-        SeesTarget = TrySeeHunter(out HunterAgent seen);
+        // After a capture the wolf ignores the hunter for a while, otherwise the
+        // pack camps the respawn point and kills it again and again.
+        HunterAgent seen = null;
+        SeesTarget = huntCooldown <= 0f && TrySeeHunter(out seen);
 
         if (seen != null)
         {
@@ -143,19 +149,21 @@ public class WolfAgent : SteeringAgent
         }
 
         if (Target != null && Target.IsDead) LoseTarget();
-        else if (hasAlert && IsHunterInsideSafeZone()) LoseTarget();
+        else if (hasAlert && IsHunterProtected()) LoseTarget();
 
         if (Target != null && SeesTarget) Chase();
         else if (hasAlert) MoveToLastKnown();
         else Patrol();
 
-        KeepOutOfSafeZone();
+        KeepOutOfProtectedZones();
         TryCapture();
         DrawPath();
     }
 
     public void ReceiveAlert(Vector3 position)
     {
+        if (huntCooldown > 0f) return;
+
         LastKnownPosition = position;
         hasAlert = true;
         searchTimer = searchDuration;
@@ -325,7 +333,7 @@ public class WolfAgent : SteeringAgent
 
     private void TryCapture()
     {
-        if (Target == null || Target.IsDead || Target.IsInsideSafeZone()) return;
+        if (Target == null || Target.IsDead || Target.IsProtected()) return;
 
         Vector3 point = Target.transform.position + Vector3.up * 0.6f;
         Vector3 offset = Target.transform.position - transform.position;
@@ -334,6 +342,7 @@ public class WolfAgent : SteeringAgent
         if (!SeesTarget && !HasLineOfSight(point)) return;
 
         Target.Kill();
+        huntCooldown = captureCooldown;
         LoseTarget();
     }
 
@@ -359,34 +368,7 @@ public class WolfAgent : SteeringAgent
 
     public void FollowPath(float deltaTime)
     {
-        if (HasArrived)
-        {
-            Halt();
-            return;
-        }
-
-        Vector3 target = path[pathIndex].WorldPosition;
-        target.y = transform.position.y;
-
-        Vector3 offset = target - transform.position;
-        offset.y = 0f;
-
-        if (offset.sqrMagnitude <= waypointDistance * waypointDistance)
-        {
-            pathIndex++;
-            if (HasArrived)
-            {
-                Halt();
-                return;
-            }
-
-            target = path[pathIndex].WorldPosition;
-            target.y = transform.position.y;
-            offset = target - transform.position;
-            offset.y = 0f;
-        }
-
-        ApplyAcceleration(Steer(offset.normalized * maxSpeed), deltaTime);
+        FollowNodes(path, ref pathIndex, waypointDistance, deltaTime);
     }
 
     public void Halt()
@@ -405,7 +387,7 @@ public class WolfAgent : SteeringAgent
         {
             HunterAgent candidate = all[i];
             if (candidate == null || candidate.IsDead) continue;
-            if (candidate.IsInsideSafeZone()) continue;
+            if (candidate.IsProtected()) continue;
 
             Vector3 point = candidate.transform.position + Vector3.up * 0.6f;
             Vector3 offset = point - origin;
@@ -429,14 +411,14 @@ public class WolfAgent : SteeringAgent
         return false;
     }
 
-    private bool IsHunterInsideSafeZone()
+    private bool IsHunterProtected()
     {
         IReadOnlyList<HunterAgent> all = HunterRegistry.All;
         for (int i = 0; i < all.Count; i++)
         {
             HunterAgent hunter = all[i];
             if (hunter == null || hunter.IsDead) continue;
-            if (hunter.IsInsideSafeZone()) return true;
+            if (hunter.IsProtected()) return true;
         }
 
         return false;
@@ -468,9 +450,30 @@ public class WolfAgent : SteeringAgent
         return LevelLayout.SafeZoneA.Contains(cell) || LevelLayout.SafeZoneB.Contains(cell);
     }
 
-    private void KeepOutOfSafeZone()
+    /// <summary>
+    /// Safe zones and the hunter spawn are off limits for the pack.
+    /// </summary>
+    private bool IsInsideBlockedZone()
     {
-        if (!IsInsideSafeZone())
+        Vector2Int cell = new Vector2Int(
+            Mathf.FloorToInt(transform.position.x),
+            Mathf.FloorToInt(transform.position.z));
+
+        if (graph != null)
+        {
+            Node node = graph.GetNode(cell);
+            if (node != null)
+                return node.CellType == CellType.SafeZone || node.CellType == CellType.Initial;
+        }
+
+        return LevelLayout.SafeZoneA.Contains(cell) ||
+               LevelLayout.SafeZoneB.Contains(cell) ||
+               LevelLayout.InitialZone.Contains(cell);
+    }
+
+    private void KeepOutOfProtectedZones()
+    {
+        if (!IsInsideBlockedZone())
         {
             lastSafePosition = transform.position;
             return;

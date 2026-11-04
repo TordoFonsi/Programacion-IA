@@ -15,7 +15,7 @@ public static class FeedbackTests
         hunter.Configure(graph, null, null, Color.white, 6f, 22f);
         hunter.StartBrain();
 
-        PreyAgent prey = CreatePrey(new Vector3(50f, 0f, 35f));
+        PreyAgent prey = CreatePrey(new Vector3(50f, 0f, 34f));
 
         GameObject icon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         icon.name = "Detection Icon Test";

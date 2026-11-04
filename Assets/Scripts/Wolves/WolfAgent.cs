@@ -7,7 +7,7 @@ public class WolfAgent : SteeringAgent
     [SerializeField] private float captureRadius = 1.6f;
 
     [Header("Senses")]
-    [SerializeField] private float visionRange = 14f;
+    [SerializeField] private float visionRange = 10f;
     [SerializeField] private float fieldOfView = 110f;
     [SerializeField] private float closeRange = 3f;
     [SerializeField] private float eyeHeight = 1.1f;
@@ -393,13 +393,20 @@ public class WolfAgent : SteeringAgent
             Vector3 offset = point - origin;
             offset.y = 0f;
 
+            // Keep chasing the current target a little past the edge of the
+            // cone, so a hunter walking along the limit does not flicker
+            // between Chase and Search every frame.
+            bool current = candidate == Target;
+            float allowedRange = current ? visionRange * 1.25f : visionRange;
+            float allowedHalfAngle = fieldOfView * 0.5f + (current ? 10f : 0f);
+
             float distance = offset.magnitude;
-            if (distance > visionRange || distance < 0.0001f) continue;
+            if (distance > allowedRange || distance < 0.0001f) continue;
 
             if (distance > closeRange)
             {
                 float angle = Vector3.Angle(transform.forward, offset);
-                if (angle > fieldOfView * 0.5f) continue;
+                if (angle > allowedHalfAngle) continue;
             }
 
             if (Physics.Raycast(origin, offset.normalized, distance, obstacleMask)) continue;

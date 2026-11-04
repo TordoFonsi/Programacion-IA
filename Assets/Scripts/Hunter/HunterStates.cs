@@ -47,7 +47,7 @@ public class HunterAttackState : State
         if (agent.TryHigherPriority(HunterStateId.Attack)) return;
 
         PreyAgent target = agent.Vision.Target;
-        if (target == null || !target.IsActive || !agent.Vision.IsVisible)
+        if (target == null || !target.IsActive || target.IsDead || !agent.Vision.IsVisible)
         {
             agent.ChangeState(HunterStateId.Search);
             return;

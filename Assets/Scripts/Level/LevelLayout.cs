@@ -17,9 +17,9 @@ public static class LevelLayout
 
     public static readonly RectInt InitialZone = new RectInt(1, 23, 11, 14);
     public static readonly RectInt ExitZone = new RectInt(88, 23, 11, 14);
-    public static readonly RectInt HuntingGround = new RectInt(35, 23, 30, 14);
-    public static readonly RectInt SafeZoneA = new RectInt(71, 40, 8, 8);
-    public static readonly RectInt SafeZoneB = new RectInt(21, 12, 8, 8);
+    public static readonly RectInt HuntingGround = new RectInt(35, 25, 30, 10);
+    public static readonly RectInt SafeZoneA = new RectInt(68, 37, 8, 8);
+    public static readonly RectInt SafeZoneB = new RectInt(23, 17, 8, 8);
 
     public static CellType[,] Build()
     {
@@ -37,16 +37,19 @@ public static class LevelLayout
 
         Fill(cells, HuntingGround, CellType.HuntingGround);
 
+        // Zonas seguras: callejones sin salida en los huecos noreste y
+        // suroeste, centrados en cada hueco y fuera de las rutas de patrulla.
+        Fill(cells, SafeZoneA, CellType.SafeZone);
+        Fill(cells, SafeZoneB, CellType.SafeZone);
+
+        // Corredores de suelo normal que unen cada zona segura con el pasillo
+        // central. El unico acceso a la sala es ese callejon.
+        Fill(cells, new RectInt(71, 31, 2, 6), CellType.Floor);
+        Fill(cells, new RectInt(26, 25, 2, 4), CellType.Floor);
+
         // Pasillo central: une la zona inicial, el coto y la salida.
         Fill(cells, new RectInt(19, 29, 16, 2), CellType.Floor);
         Fill(cells, new RectInt(65, 29, 15, 2), CellType.Floor);
-
-        // Zonas seguras: se entra por un pasillo que baja hasta el central,
-        // sin protuberancias hacia el anillo.
-        Fill(cells, SafeZoneA, CellType.SafeZone);
-        Fill(cells, new RectInt(71, 31, 2, 9), CellType.Floor);
-        Fill(cells, SafeZoneB, CellType.SafeZone);
-        Fill(cells, new RectInt(27, 20, 2, 9), CellType.Floor);
 
         Fill(cells, InitialZone, CellType.Initial);
         Fill(cells, new RectInt(11, 29, 3, 2), CellType.Initial);

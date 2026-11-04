@@ -23,7 +23,7 @@ public static class HunterTests
         bool interestCapped = hunter.ActiveInterestObjects <= 5;
         hunter.ClearInterestObjects();
 
-        PreyAgent prey = CreatePrey(new Vector3(50f, 0f, 35.5f));
+        PreyAgent prey = CreatePrey(new Vector3(50f, 0f, 34f));
 
         // Attack can only start once the time between attacks (TBA) has elapsed.
         hunter.Tick(0.9f);

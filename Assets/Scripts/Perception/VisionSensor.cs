@@ -3,11 +3,18 @@ using UnityEngine;
 public class VisionSensor : MonoBehaviour
 {
     [Header("Vision")]
-    [SerializeField] private float range = 14f;
+    [SerializeField] private float range = 10f;
     [SerializeField] private float fieldOfView = 100f;
     [SerializeField] private float closeRange = 3f;
     [SerializeField] private float eyeHeight = 1.2f;
     [SerializeField] private LayerMask obstacleMask = ~0;
+
+    [Header("Stability")]
+    // The current target keeps a slightly larger range and cone. Without this
+    // margin a prey sitting right on the edge of the cone flickers in and out
+    // every frame and the hunter jumps between Attack and Search.
+    [SerializeField] private float targetRangeMargin = 1.25f;
+    [SerializeField] private float targetAngleMargin = 12f;
 
     [Header("Memory")]
     [SerializeField] private float memoryDuration = 4f;
@@ -88,19 +95,23 @@ public class VisionSensor : MonoBehaviour
         for (int i = all.Count - 1; i >= 0; i--)
         {
             PreyAgent prey = all[i];
-            if (prey == null || !prey.IsActive) continue;
+            if (prey == null || !prey.IsActive || prey.IsDead) continue;
+
+            bool current = prey == target;
+            float allowedRange = current ? range * targetRangeMargin : range;
+            float allowedHalfAngle = fieldOfView * 0.5f + (current ? targetAngleMargin : 0f);
 
             Vector3 point = prey.transform.position + Vector3.up * 0.5f;
             Vector3 offset = point - origin;
             offset.y = 0f;
 
             float distance = offset.magnitude;
-            if (distance > range || distance < 0.0001f) continue;
+            if (distance > allowedRange || distance < 0.0001f) continue;
 
             if (distance > closeRange)
             {
                 float angle = Vector3.Angle(transform.forward, offset);
-                if (angle > fieldOfView * 0.5f) continue;
+                if (angle > allowedHalfAngle) continue;
             }
 
             if (Physics.Raycast(origin, offset.normalized, distance, obstacleMask)) continue;

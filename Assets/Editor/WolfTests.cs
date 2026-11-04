@@ -71,12 +71,12 @@ public static class WolfTests
 
         WolfAgent guard = CreateWolf(
             graph,
-            new Vector3(83.5f, 0.7f, 44f),
-            Vector3.left,
+            new Vector3(71.5f, 0.7f, 36.5f),
+            Vector3.forward,
             new[]
             {
-                new Vector3(83.5f, 0.7f, 44f),
-                new Vector3(83.5f, 0.7f, 48f)
+                new Vector3(71.5f, 0.7f, 36.5f),
+                new Vector3(71.5f, 0.7f, 34.5f)
             });
         pack.Register(guard);
 

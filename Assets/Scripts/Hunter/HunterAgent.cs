@@ -30,7 +30,7 @@ public class HunterAgent : SteeringAgent
     [SerializeField] private float gatherTime = 1.5f;
 
     [Header("Senses")]
-    [SerializeField] private float visionRange = 14f;
+    [SerializeField] private float visionRange = 9f;
     [SerializeField] private float fieldOfView = 100f;
     [SerializeField] private float eyeHeight = 1.2f;
     [SerializeField] private LayerMask obstacleMask = ~0;
@@ -64,6 +64,12 @@ public class HunterAgent : SteeringAgent
     private float respawnTimer;
     private int health;
     private bool dead;
+    private PreyAgent deadPreyFocus;
+
+    // Once a prey or a wolf is inside the cone it stays "known" a bit past the
+    // edge of the range, so an object sitting on the limit cannot make the
+    // hunter flip between two states every frame.
+    private const float TargetStickiness = 1.3f;
 
     public int Collected { get; private set; }
     public int Goal => requiredGathers;
@@ -213,6 +219,7 @@ public class HunterAgent : SteeringAgent
 
         health = maxHealth;
         dead = false;
+        deadPreyFocus = null;
         Collected = 0;
         RunsCompleted = 0;
         StateId = HunterStateId.Search;
@@ -426,7 +433,7 @@ public class HunterAgent : SteeringAgent
     public bool HasLivingPreyInSight()
     {
         if (vision == null || !vision.IsVisible || vision.Target == null) return false;
-        return vision.Target.IsActive;
+        return vision.Target.IsActive && !vision.Target.IsDead;
     }
 
     public bool ShouldFlee()
@@ -444,17 +451,19 @@ public class HunterAgent : SteeringAgent
         IReadOnlyList<WolfAgent> all = WolfRegistry.All;
         Vector3 origin = EyePosition;
         WolfAgent best = null;
-        float bestDistance = visionRange * visionRange;
+        float bestDistance = float.MaxValue;
 
         for (int i = all.Count - 1; i >= 0; i--)
         {
             WolfAgent wolf = all[i];
             if (wolf == null) continue;
 
+            float allowedRange = wolf == DetectedWolf ? visionRange * TargetStickiness : visionRange;
+
             Vector3 point = wolf.transform.position + Vector3.up * 0.6f;
             Vector3 offset = point - origin;
             float distance = offset.magnitude;
-            if (distance > visionRange || distance < 0.0001f) continue;
+            if (distance > allowedRange || distance < 0.0001f) continue;
 
             if (Physics.Raycast(origin, offset / distance, distance, obstacleMask)) continue;
             if (distance >= bestDistance) continue;
@@ -468,8 +477,11 @@ public class HunterAgent : SteeringAgent
 
     public PreyAgent FindDeadPrey()
     {
+        if (deadPreyFocus != null && (!deadPreyFocus.IsDead || deadPreyFocus.IsCollected))
+            deadPreyFocus = null;
+
         PreyAgent best = null;
-        float bestDistance = visionRange * visionRange;
+        float bestDistance = float.MaxValue;
         Vector3 origin = EyePosition;
 
         IReadOnlyList<PreyAgent> all = PreyRegistry.All;
@@ -478,10 +490,12 @@ public class HunterAgent : SteeringAgent
             PreyAgent prey = all[i];
             if (prey == null || !prey.IsDead || prey.IsCollected) continue;
 
+            float allowedRange = prey == deadPreyFocus ? visionRange * TargetStickiness : visionRange;
+
             Vector3 point = prey.transform.position + Vector3.up * 0.5f;
             Vector3 offset = point - origin;
             float distance = offset.magnitude;
-            if (distance > visionRange) continue;
+            if (distance > allowedRange) continue;
             if (distance > 0.0001f && Physics.Raycast(origin, offset / distance, distance, obstacleMask)) continue;
             if (distance >= bestDistance) continue;
 
@@ -489,6 +503,7 @@ public class HunterAgent : SteeringAgent
             best = prey;
         }
 
+        deadPreyFocus = best;
         return best;
     }
 
@@ -613,6 +628,7 @@ public class HunterAgent : SteeringAgent
         dead = true;
         health = 0;
         respawnTimer = respawnTime;
+        deadPreyFocus = null;
         Velocity = Vector3.zero;
         ClearPath();
         if (vision != null) vision.Forget();
@@ -625,6 +641,7 @@ public class HunterAgent : SteeringAgent
         dead = false;
         health = maxHealth;
         Collected = 0;
+        deadPreyFocus = null;
         transform.position = InitialSpawn;
         Velocity = Vector3.zero;
         ClearPath();
@@ -644,6 +661,7 @@ public class HunterAgent : SteeringAgent
     {
         RunsCompleted++;
         Collected = 0;
+        deadPreyFocus = null;
         transform.position = InitialSpawn;
         Velocity = Vector3.zero;
         ClearPath();

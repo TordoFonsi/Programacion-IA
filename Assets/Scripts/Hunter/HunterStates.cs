@@ -180,8 +180,10 @@ public class HunterFleeState : State
         repathTimer = 0f;
         waitTimer = 0f;
         // The safe zone is chosen once per flee, so the hunter does not flip
-        // between two zones and get stuck at an entrance.
+        // between two zones and get stuck at an entrance. The choice already
+        // avoids routes with a visible wolf near the middle.
         destination = agent.NearestSafeZone();
+        agent.SetDestination(destination);
         agent.Halt();
     }
 
@@ -209,6 +211,15 @@ public class HunterFleeState : State
 
         if (repathTimer <= 0f || agent.HasArrived)
         {
+            // A wolf may have moved onto the chosen route. Re-evaluate the
+            // safe-zone choice only when the current route is threatened, so
+            // the hunter does not flip between zones while both are blocked.
+            if (agent.IsFleeRouteThreatened(destination))
+            {
+                Vector3 alternative = agent.NearestSafeZone();
+                if (alternative != destination) destination = alternative;
+            }
+
             agent.SetDestination(destination);
             repathTimer = 0.5f;
         }

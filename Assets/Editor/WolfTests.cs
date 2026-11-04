@@ -84,17 +84,38 @@ public static class WolfTests
         bool staysOut = !guard.IsInsideSafeZone();
         bool ignoresSafe = guard.Target == null;
 
+        // Flee route avoidance: SafeZoneA is the closest one, but a wolf sits
+        // on that route. The hunter must choose SafeZoneB instead.
+        HunterAgent chooser = CreateHunter(graph, new Vector3(60f, 1f, 30f));
+        chooser.StartBrain();
+
+        WolfAgent blocker = CreateWolf(
+            graph,
+            new Vector3(66f, 0.7f, 30f),
+            Vector3.forward,
+            new[]
+            {
+                new Vector3(66f, 0.7f, 30f),
+                new Vector3(66f, 0.7f, 32f)
+            });
+        pack.Register(blocker);
+
+        chooser.NearestSafeZone();
+        bool avoidsWolfRoute = chooser.SafeZoneTargetName == "SafeZoneB";
+
         bool slower = wolf.MaxSpeed < hunter.MaxSpeed;
 
-        bool ok = seesHunter && alertPropagates && usesAStar && captures && staysOut && ignoresSafe && slower;
+        bool ok = seesHunter && alertPropagates && usesAStar && captures && staysOut && ignoresSafe && avoidsWolfRoute && slower;
 
-        Debug.Log($"Wolves: {(ok ? "OK" : "FAIL")} | sees={seesHunter} alert={alertPropagates} astar={usesAStar} capture={captures} staysOut={staysOut} ignoresSafe={ignoresSafe} slower={slower}");
+        Debug.Log($"Wolves: {(ok ? "OK" : "FAIL")} | sees={seesHunter} alert={alertPropagates} astar={usesAStar} capture={captures} staysOut={staysOut} ignoresSafe={ignoresSafe} avoid={avoidsWolfRoute} slower={slower}");
 
         Object.DestroyImmediate(listener.gameObject);
         Object.DestroyImmediate(guard.gameObject);
         Object.DestroyImmediate(wolf.gameObject);
         Object.DestroyImmediate(hunter.gameObject);
         Object.DestroyImmediate(safeHunter.gameObject);
+        Object.DestroyImmediate(blocker.gameObject);
+        Object.DestroyImmediate(chooser.gameObject);
         Object.DestroyImmediate(wall);
         Object.DestroyImmediate(packObject);
         Object.DestroyImmediate(graphHost);

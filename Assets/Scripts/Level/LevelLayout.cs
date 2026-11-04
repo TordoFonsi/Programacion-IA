@@ -43,18 +43,21 @@ public static class LevelLayout
         Fill(cells, SafeZoneB, CellType.SafeZone);
 
         // Corredores de suelo normal que unen cada zona segura con el pasillo
-        // central. El unico acceso a la sala es ese callejon.
-        Fill(cells, new RectInt(71, 31, 2, 6), CellType.Floor);
-        Fill(cells, new RectInt(26, 25, 2, 4), CellType.Floor);
+        // central. El unico acceso a la sala es ese callejon. Son de cuatro
+        // celdas de ancho para que los agentes no se traben al girar.
+        Fill(cells, new RectInt(70, 31, 4, 6), CellType.Floor);
+        Fill(cells, new RectInt(25, 25, 4, 4), CellType.Floor);
 
-        // Pasillo central: une la zona inicial, el coto y la salida.
-        Fill(cells, new RectInt(19, 29, 16, 2), CellType.Floor);
-        Fill(cells, new RectInt(65, 29, 15, 2), CellType.Floor);
+        // Pasillo central: une la zona inicial, el coto y la salida. Tambien
+        // es mas ancho para que el cazador y los lobos no se bloqueen en la
+        // entrada del coto.
+        Fill(cells, new RectInt(19, 28, 16, 4), CellType.Floor);
+        Fill(cells, new RectInt(65, 28, 15, 4), CellType.Floor);
 
         Fill(cells, InitialZone, CellType.Initial);
-        Fill(cells, new RectInt(11, 29, 3, 2), CellType.Initial);
+        Fill(cells, new RectInt(11, 28, 3, 4), CellType.Initial);
         Fill(cells, ExitZone, CellType.Exit);
-        Fill(cells, new RectInt(86, 29, 3, 2), CellType.Exit);
+        Fill(cells, new RectInt(86, 28, 3, 4), CellType.Exit);
 
         return cells;
     }

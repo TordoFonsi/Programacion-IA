@@ -38,6 +38,11 @@ public class HunterAgent : SteeringAgent
     [Header("Pathing")]
     [SerializeField] private float waypointDistance = 0.35f;
 
+    [Header("Flee")]
+    // A safe-zone route is discarded when a wolf the hunter can see is this
+    // close to the middle of the path.
+    [SerializeField] private float wolfPathAvoidRadius = 5f;
+
     [Header("Interest Objects")]
     [SerializeField] private float interestSpawnInterval = 6f;
     [SerializeField] private int maxInterestObjects = 5;
@@ -65,6 +70,16 @@ public class HunterAgent : SteeringAgent
     private int health;
     private bool dead;
     private PreyAgent deadPreyFocus;
+    private readonly List<WolfAgent> visibleWolves = new List<WolfAgent>();
+    private readonly List<SafeZoneCandidate> safeZoneCandidates = new List<SafeZoneCandidate>(2);
+
+    private struct SafeZoneCandidate
+    {
+        public Vector3 Center;
+        public string Name;
+        public int Length;
+        public bool Threatened;
+    }
 
     // Once a prey or a wolf is inside the cone it stays "known" a bit past the
     // edge of the range, so an object sitting on the limit cannot make the
@@ -135,7 +150,9 @@ public class HunterAgent : SteeringAgent
                         return $"Refugiado en {SafeZoneTargetName} - sale en {wait:0.0} s";
                     }
 
-                    return "Huyendo a zona segura";
+                    return HasSafeZoneTarget
+                        ? $"Huyendo a {SafeZoneTargetName}"
+                        : "Huyendo a zona segura";
 
                 case HunterStateId.Exit:
                     return "Yendo a la salida";
@@ -449,7 +466,6 @@ public class HunterAgent : SteeringAgent
     private WolfAgent FindVisibleWolf()
     {
         IReadOnlyList<WolfAgent> all = WolfRegistry.All;
-        Vector3 origin = EyePosition;
         WolfAgent best = null;
         float bestDistance = float.MaxValue;
 
@@ -459,13 +475,9 @@ public class HunterAgent : SteeringAgent
             if (wolf == null) continue;
 
             float allowedRange = wolf == DetectedWolf ? visionRange * TargetStickiness : visionRange;
-
-            Vector3 point = wolf.transform.position + Vector3.up * 0.6f;
-            Vector3 offset = point - origin;
-            float distance = offset.magnitude;
-            if (distance > allowedRange || distance < 0.0001f) continue;
-
-            if (Physics.Raycast(origin, offset / distance, distance, obstacleMask)) continue;
+            float distance = WolfSightDistance(wolf);
+            if (distance > allowedRange) continue;
+            if (!HasLineOfSight(wolf)) continue;
             if (distance >= bestDistance) continue;
 
             bestDistance = distance;
@@ -473,6 +485,37 @@ public class HunterAgent : SteeringAgent
         }
 
         return best;
+    }
+
+    private float WolfSightDistance(WolfAgent wolf)
+    {
+        Vector3 point = wolf.transform.position + Vector3.up * 0.6f;
+        return (point - EyePosition).magnitude;
+    }
+
+    private bool HasLineOfSight(WolfAgent wolf)
+    {
+        Vector3 origin = EyePosition;
+        Vector3 point = wolf.transform.position + Vector3.up * 0.6f;
+        Vector3 offset = point - origin;
+        float distance = offset.magnitude;
+        if (distance < 0.0001f) return false;
+        return !Physics.Raycast(origin, offset / distance, distance, obstacleMask);
+    }
+
+    private void CollectVisibleWolves(List<WolfAgent> result)
+    {
+        result.Clear();
+
+        IReadOnlyList<WolfAgent> all = WolfRegistry.All;
+        for (int i = all.Count - 1; i >= 0; i--)
+        {
+            WolfAgent wolf = all[i];
+            if (wolf == null) continue;
+            if (WolfSightDistance(wolf) > visionRange) continue;
+            if (!HasLineOfSight(wolf)) continue;
+            result.Add(wolf);
+        }
     }
 
     public PreyAgent FindDeadPrey()
@@ -778,10 +821,9 @@ public class HunterAgent : SteeringAgent
     {
         graph.EnsureBuilt();
         Node start = graph.GetNearestNode(transform.position);
+        CollectVisibleWolves(visibleWolves);
 
-        Vector3 best = transform.position;
-        string bestName = "-";
-        int bestLength = int.MaxValue;
+        safeZoneCandidates.Clear();
 
         IReadOnlyList<Zone> zones = ZoneRegistry.Zones;
         bool found = false;
@@ -792,37 +834,136 @@ public class HunterAgent : SteeringAgent
             if (zone == null || zone.Type != ZoneType.SafeZone) continue;
 
             found = true;
-            ConsiderSafeZone(zone.Center, zone.name, start, ref best, ref bestName, ref bestLength);
+            AddSafeZoneCandidate(zone.Center, zone.name, start);
         }
 
         if (!found)
         {
-            ConsiderSafeZone(RectCenter(LevelLayout.SafeZoneA), "SafeZoneA", start, ref best, ref bestName, ref bestLength);
-            ConsiderSafeZone(RectCenter(LevelLayout.SafeZoneB), "SafeZoneB", start, ref best, ref bestName, ref bestLength);
+            AddSafeZoneCandidate(RectCenter(LevelLayout.SafeZoneA), "SafeZoneA", start);
+            AddSafeZoneCandidate(RectCenter(LevelLayout.SafeZoneB), "SafeZoneB", start);
         }
 
-        SafeZoneTarget = best;
-        SafeZoneTargetName = bestName;
-        return best;
+        SafeZoneCandidate best = default;
+        bool hasBest = false;
+
+        // First choice: the shortest route that does not pass close to a wolf
+        // the hunter can see. This is what stops the hunter from running into
+        // the pack on its way to the nearest safe zone.
+        for (int i = 0; i < safeZoneCandidates.Count; i++)
+        {
+            SafeZoneCandidate candidate = safeZoneCandidates[i];
+            if (candidate.Threatened) continue;
+            if (hasBest && candidate.Length >= best.Length) continue;
+
+            best = candidate;
+            hasBest = true;
+        }
+
+        // If every route is threatened, keep the current zone instead of
+        // swapping every repath. Only fall back to the shortest route when
+        // there is no current target yet.
+        if (!hasBest && SafeZoneTargetName != "-")
+        {
+            for (int i = 0; i < safeZoneCandidates.Count; i++)
+            {
+                if (safeZoneCandidates[i].Name != SafeZoneTargetName) continue;
+                best = safeZoneCandidates[i];
+                hasBest = true;
+                break;
+            }
+        }
+
+        if (!hasBest)
+        {
+            for (int i = 0; i < safeZoneCandidates.Count; i++)
+            {
+                SafeZoneCandidate candidate = safeZoneCandidates[i];
+                if (hasBest && candidate.Length >= best.Length) continue;
+                best = candidate;
+                hasBest = true;
+            }
+        }
+
+        if (!hasBest) return transform.position;
+
+        SafeZoneTarget = best.Center;
+        SafeZoneTargetName = best.Name;
+        return best.Center;
     }
 
-    private void ConsiderSafeZone(
-        Vector3 center,
-        string zoneName,
-        Node start,
-        ref Vector3 best,
-        ref string bestName,
-        ref int bestLength)
+    private void AddSafeZoneCandidate(Vector3 center, string zoneName, Node start)
     {
         Node goal = graph.GetNearestNode(center);
         if (start == null || goal == null) return;
 
         List<Node> route = AStar.FindPath(graph, start, goal, graph.IsWalkable);
-        if (route.Count == 0 || route.Count >= bestLength) return;
+        if (route.Count == 0) return;
 
-        bestLength = route.Count;
-        best = center;
-        bestName = zoneName;
+        safeZoneCandidates.Add(new SafeZoneCandidate
+        {
+            Center = center,
+            Name = zoneName,
+            Length = route.Count,
+            Threatened = IsRouteThreatened(route, visibleWolves)
+        });
+    }
+
+    /// <summary>
+    /// True when a wolf the hunter can see is close to the middle of the route.
+    /// The first couple of units are ignored: a wolf next to the hunter is the
+    /// reason to flee, not a reason to reject every possible route.
+    /// </summary>
+    private bool IsRouteThreatened(IReadOnlyList<Node> route, IReadOnlyList<WolfAgent> wolves)
+    {
+        if (route == null || route.Count == 0 || wolves.Count == 0) return false;
+
+        Vector3 hunter = transform.position;
+        hunter.y = 0f;
+        float radiusSqr = wolfPathAvoidRadius * wolfPathAvoidRadius;
+
+        for (int i = 0; i < route.Count; i++)
+        {
+            Vector3 node = route[i].WorldPosition;
+            node.y = 0f;
+            if ((node - hunter).sqrMagnitude < 4f) continue;
+
+            for (int j = 0; j < wolves.Count; j++)
+            {
+                WolfAgent wolf = wolves[j];
+                if (wolf == null) continue;
+
+                Vector3 wolfPosition = wolf.transform.position;
+                wolfPosition.y = 0f;
+                if ((wolfPosition - node).sqrMagnitude <= radiusSqr) return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks the route the hunter is currently following (or the route to the
+    /// given destination) against the wolves it can see. Used by the flee state
+    /// to re-evaluate the chosen safe zone without recomputing when the path is
+    /// still the same one.
+    /// </summary>
+    public bool IsFleeRouteThreatened(Vector3 destination)
+    {
+        if (graph == null) return false;
+
+        CollectVisibleWolves(visibleWolves);
+        if (visibleWolves.Count == 0) return false;
+
+        if (path.Count > 0 && (destination - pathGoal).sqrMagnitude < 1f)
+            return IsRouteThreatened(path, visibleWolves);
+
+        graph.EnsureBuilt();
+        Node start = graph.GetNearestNode(transform.position);
+        Node goal = graph.GetNearestNode(destination);
+        if (start == null || goal == null) return false;
+
+        List<Node> route = AStar.FindPath(graph, start, goal, graph.IsWalkable);
+        return IsRouteThreatened(route, visibleWolves);
     }
 
     public Vector3 RandomSearchPoint()

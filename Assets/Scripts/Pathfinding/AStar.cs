@@ -10,10 +10,13 @@ public static class AStar
         if (graph == null || start == null || goal == null || canTraverse == null) return empty;
         if (!canTraverse(start) || !canTraverse(goal)) return empty;
 
+        // Frontier: binary min-heap (O(log n) push/pop). Closed set: HashSet
+        // (O(1) membership). All node costs are 1, so the Manhattan heuristic
+        // is consistent and a node never needs to be reopened.
         PriorityQueue<Node> frontier = new PriorityQueue<Node>();
         Dictionary<Node, Node> cameFrom = new Dictionary<Node, Node>();
         Dictionary<Node, float> costSoFar = new Dictionary<Node, float>();
-        HashSet<Node> processed = new HashSet<Node>();
+        HashSet<Node> closed = new HashSet<Node>();
 
         frontier.Enqueue(start, 0f);
         cameFrom[start] = null;
@@ -22,7 +25,7 @@ public static class AStar
         while (frontier.Count > 0)
         {
             Node current = frontier.Dequeue();
-            if (!processed.Add(current)) continue;
+            if (!closed.Add(current)) continue;
 
             visited?.Add(current);
             if (current == goal) return Reconstruct(cameFrom, current);
@@ -37,7 +40,6 @@ public static class AStar
                 costSoFar[neighbor] = newCost;
                 cameFrom[neighbor] = current;
                 frontier.Enqueue(neighbor, newCost + Heuristic(neighbor, goal));
-                processed.Remove(neighbor);
             }
         }
 

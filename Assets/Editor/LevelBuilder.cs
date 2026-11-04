@@ -22,12 +22,12 @@ public static class LevelBuilder
         EnsureFolder(MeshFolder);
         ClearMeshes();
 
-        Material floor = CreateMaterial("Floor", new Color(0.85f, 0.82f, 0.74f));
-        Material wall = CreateMaterial("Wall", new Color(0.18f, 0.19f, 0.22f));
-        Material hunting = CreateMaterial("HuntingGround", new Color(0.95f, 0.72f, 0.35f));
-        Material initial = CreateMaterial("InitialZone", new Color(0.45f, 0.75f, 0.55f));
-        Material safe = CreateMaterial("SafeZone", new Color(0.65f, 0.45f, 0.80f));
-        Material exit = CreateMaterial("ExitZone", new Color(0.40f, 0.65f, 0.90f));
+        Material floor = CreateMaterial("Floor", LevelPalette.Floor);
+        Material wall = CreateMaterial("Wall", LevelPalette.Wall);
+        Material hunting = CreateMaterial("HuntingGround", LevelPalette.HuntingGround);
+        Material initial = CreateMaterial("InitialZone", LevelPalette.InitialZone);
+        Material safe = CreateMaterial("SafeZone", LevelPalette.SafeZone);
+        Material exit = CreateMaterial("ExitZone", LevelPalette.ExitZone);
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         Transform root = new GameObject("Level").transform;
@@ -41,7 +41,8 @@ public static class LevelBuilder
         BuildZones(root);
 
         Graph graph = CreateGraph(root);
-        CreatePathTest(root, graph);
+        CreateGraphVisualizer(root, graph);
+        CreateBootstrap(root, graph);
 
         CreateCamera();
         CreateLight();
@@ -93,11 +94,11 @@ public static class LevelBuilder
 
     private static void BuildZones(Transform parent)
     {
-        CreateZone(parent, "Initial", ZoneType.Initial, LevelLayout.InitialZone, new Color(0.45f, 0.75f, 0.55f));
-        CreateZone(parent, "HuntingGround", ZoneType.HuntingGround, LevelLayout.HuntingGround, new Color(0.95f, 0.72f, 0.35f));
-        CreateZone(parent, "SafeZoneA", ZoneType.SafeZone, LevelLayout.SafeZoneA, new Color(0.65f, 0.45f, 0.80f));
-        CreateZone(parent, "SafeZoneB", ZoneType.SafeZone, LevelLayout.SafeZoneB, new Color(0.65f, 0.45f, 0.80f));
-        CreateZone(parent, "Exit", ZoneType.Exit, LevelLayout.ExitZone, new Color(0.40f, 0.65f, 0.90f));
+        CreateZone(parent, "Initial", ZoneType.Initial, LevelLayout.InitialZone, LevelPalette.InitialZone);
+        CreateZone(parent, "HuntingGround", ZoneType.HuntingGround, LevelLayout.HuntingGround, LevelPalette.HuntingGround);
+        CreateZone(parent, "SafeZoneA", ZoneType.SafeZone, LevelLayout.SafeZoneA, LevelPalette.SafeZone);
+        CreateZone(parent, "SafeZoneB", ZoneType.SafeZone, LevelLayout.SafeZoneB, LevelPalette.SafeZone);
+        CreateZone(parent, "Exit", ZoneType.Exit, LevelLayout.ExitZone, LevelPalette.ExitZone);
     }
 
     private static void CreateZone(Transform parent, string name, ZoneType type, RectInt rect, Color color)
@@ -133,50 +134,47 @@ public static class LevelBuilder
         return go.AddComponent<Graph>();
     }
 
-    private static void CreatePathTest(Transform parent, Graph graph)
+    private static void CreateGraphVisualizer(Transform parent, Graph graph)
     {
-        GameObject start = new GameObject("PathStart");
-        start.transform.SetParent(parent, false);
-        start.transform.position = new Vector3(6.5f, 0f, 30f);
+        GameObject go = new GameObject("GraphVisualizer");
+        go.transform.SetParent(parent, false);
 
-        GameObject goal = new GameObject("PathGoal");
-        goal.transform.SetParent(parent, false);
-        goal.transform.position = new Vector3(93.5f, 0f, 30f);
+        GraphVisualizer visualizer = go.AddComponent<GraphVisualizer>();
+        visualizer.Configure(graph);
+    }
 
-        GameObject agentObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        agentObject.name = "PathTestAgent";
-        agentObject.transform.SetParent(parent, false);
-        agentObject.transform.position = start.transform.position + Vector3.up;
-        Object.DestroyImmediate(agentObject.GetComponent<Collider>());
-        agentObject.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("PathAgent", new Color(0.15f, 0.85f, 1f));
+    private static void CreateBootstrap(Transform parent, Graph graph)
+    {
+        GameObject go = new GameObject("Parcial2Bootstrap");
+        go.transform.SetParent(parent, false);
 
-        LineRenderer line = agentObject.AddComponent<LineRenderer>();
-        line.useWorldSpace = true;
-        line.widthMultiplier = 0.25f;
-        line.numCapVertices = 2;
-        line.sharedMaterial = CreateMaterial("PathLine", new Color(0.2f, 1f, 0.5f), "Universal Render Pipeline/Unlit");
-        line.startColor = new Color(0.2f, 1f, 0.5f);
-        line.endColor = new Color(1f, 0.85f, 0.2f);
+        Material prey = CreateMaterial("Prey", LevelPalette.Prey);
+        Material hunter = CreateMaterial("Hunter", HunterAgent.SearchColor);
+        Material hunterPath = CreateMaterial("HunterPath", LevelPalette.Path, "Universal Render Pipeline/Unlit");
+        Material wolf = CreateMaterial("Wolf", WolfAgent.PatrolColor);
 
-        PathTestAgent agent = agentObject.AddComponent<PathTestAgent>();
-        agent.Configure(graph, line, start.transform, goal.transform);
-
-        GameObject visualizerObject = new GameObject("GraphVisualizer");
-        visualizerObject.transform.SetParent(parent, false);
-        GraphVisualizer visualizer = visualizerObject.AddComponent<GraphVisualizer>();
-        visualizer.Configure(graph, agent);
+        Parcial2Bootstrap bootstrap = go.AddComponent<Parcial2Bootstrap>();
+        bootstrap.Configure(graph, prey, hunter, hunterPath, wolf);
     }
 
     private static void CreateCamera()
     {
         GameObject go = new GameObject("Main Camera");
         go.tag = "MainCamera";
-        go.transform.position = new Vector3(50f, 58f, -18f);
-        go.transform.rotation = Quaternion.Euler(50f, 0f, 0f);
+        go.transform.position = new Vector3(LevelLayout.Width * 0.5f, 90f, LevelLayout.Height * 0.5f);
+        go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
         Camera camera = go.AddComponent<Camera>();
-        camera.fieldOfView = 50f;
+        camera.orthographic = true;
+        camera.orthographicSize = LevelLayout.Height * 0.5f + 3f;
+        camera.nearClipPlane = 0.1f;
+        camera.farClipPlane = 180f;
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = LevelPalette.Background;
         go.AddComponent<AudioListener>();
+
+        TopDownCamera topDown = go.AddComponent<TopDownCamera>();
+        topDown.Apply();
     }
 
     private static void CreateLight()

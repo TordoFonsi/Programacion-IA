@@ -43,7 +43,12 @@ public class Zone : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        Gizmos.color = color;
+        if (!GizmoSettings.Zones) return;
+
+        Color tint = color;
+        tint.a *= 0.6f;
+
+        Gizmos.color = tint;
         Gizmos.DrawWireCube(transform.position + Vector3.up * 0.5f, size);
     }
 }

@@ -15,8 +15,8 @@ public static class GraphTests
         Node initial = graph.GetNode(new Vector3(6.5f, 0f, 30f));
         Node exit = graph.GetNode(new Vector3(93.5f, 0f, 30f));
         Node coto = graph.GetNode(new Vector3(50f, 0f, 30f));
-        Node safeA = graph.GetNode(new Vector3(75f, 0f, 44f));
-        Node safeB = graph.GetNode(new Vector3(25f, 0f, 16f));
+        Node safeA = graph.GetNode(new Vector3(72f, 0f, 42f));
+        Node safeB = graph.GetNode(new Vector3(27f, 0f, 17f));
 
         Debug.Log($"Graph nodes: {graph.AllNodes.Count}");
 

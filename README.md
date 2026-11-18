@@ -16,10 +16,13 @@ Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspe
 ## Estado actual
 
 - Etapa 1: steering reutilizable (`SteeringBody`) y una demo temporal de movimiento.
-- Los Boids usan Seek/Arrive con aceleracion y velocidad, y respetan los limites del mapa.
+- Etapa 2: percepcion por triggers (`TriggerSensor`) con listas locales por sensor.
 
 ## A probar en esta etapa
 
 - Al dar Play los Boids se mueven, frenan al llegar a un destino y no salen de los limites.
 - Cambiar `maxSpeed` y `maxForce` en `SteeringBody` cambia la forma de moverse.
 - Mover o separar Boids antes de Play no rompe nada: cada uno busca su propio destino.
+- En la vista Scene, seleccionar un Boid: se ven los radios de sus tres sensores.
+  Durante Play, el sensor dibuja lineas verdes hacia los objetos que detecta.
+- Todavia no hay flocking: los sensores ya reciben vecinos, pero la etapa 3 los usa.

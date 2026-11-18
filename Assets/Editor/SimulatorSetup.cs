@@ -143,6 +143,8 @@ public static class SimulatorSetup
     {
         GameObject root = new GameObject("Boids");
         int boidLayer = Layer("Boid");
+        int hunterLayer = Layer("Hunter");
+        int interestLayer = Layer("InterestObject");
         Material material = AssetDatabase.LoadAssetAtPath<Material>(BoidMaterialPath);
 
         Vector2[] offsets =
@@ -177,7 +179,31 @@ public static class SimulatorSetup
 
             SteeringDemo demo = boid.AddComponent<SteeringDemo>();
             SetProperty(demo, "bounds", bounds);
+
+            CreateSensor(boid.transform, "NeighbourSensor", SensorRole.BoidNeighbours, 6f, boidLayer);
+            CreateSensor(boid.transform, "ThreatSensor", SensorRole.BoidThreat, 7f, hunterLayer);
+            CreateSensor(boid.transform, "InterestSensor", SensorRole.BoidInterest, 5f, interestLayer);
         }
+    }
+
+    private static TriggerSensor CreateSensor(Transform parent, string name, SensorRole role, float radius, int layer)
+    {
+        GameObject root = new GameObject(name);
+        root.transform.SetParent(parent);
+        root.transform.localPosition = Vector3.zero;
+
+        SphereCollider sphere = root.AddComponent<SphereCollider>();
+        sphere.isTrigger = true;
+        sphere.radius = radius;
+
+        Rigidbody body = root.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
+        body.interpolation = RigidbodyInterpolation.None;
+
+        TriggerSensor sensor = root.AddComponent<TriggerSensor>();
+        sensor.Configure(role, radius, 1 << layer);
+        return sensor;
     }
 
     private static void SetMaterial(GameObject target, string path)

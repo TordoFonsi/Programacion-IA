@@ -13,6 +13,37 @@ controlador global: cada agente decide con sus propios sensores.
 El script de Editor arma limites, piso, paredes, camara, waypoints, Boids y Cazador.
 Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspector.
 
+## Capas necesarias
+
+| Capa | Uso |
+| --- | --- |
+| `Boid` | Boids y su sensor de vecinos |
+| `Hunter` | Cazador |
+| `InterestObject` | Objetos de interes |
+| `Obstacle` | Piso, paredes y waypoints |
+
+`SimulatorSetup` busca las capas por nombre y avisa en consola si falta alguna.
+
+## Pasos manuales (si no se usa el menu)
+
+1. `Bounds`: GameObject vacio en `(10, 0, 6)` con `WorldBounds` y tamano `(44, 1, 36)`.
+2. Piso: `Plane` escalado `(4.4, 1, 3.6)` en el centro, capa `Obstacle`.
+3. Paredes: 4 cubos de 0.3 de espesor en los bordes, capa `Obstacle`.
+4. Camara ortografica cenital con tag `MainCamera` y `AudioListener`, mas una luz direccional.
+5. Waypoints: 4 cilindros en las esquinas internas, capa `Obstacle`, sin collider.
+6. Cada Boid: cubo en capa `Boid` con `SteeringBody`, `BoidFlocking`, `Health`,
+   `HealthFeedback`, `BoidFSM` y `BoidAgent`.
+7. Cada Boid necesita tres hijos con `TriggerSensor`, `SphereCollider` trigger y
+   `Rigidbody` kinematic: `NeighbourSensor` (capa `Boid`), `ThreatSensor` (capa `Hunter`)
+   e `InterestSensor` (capa `InterestObject`).
+8. Cazador: capsula en capa `Hunter` con `SteeringBody`, `HunterFSM`, `HunterAttackVisual`
+   (junto a un `LineRenderer`) y `HunterFeedback`; un hijo `VisionSensor` con
+   `TriggerSensor` rol `HunterVision` y capa `Boid`.
+9. Asignar en el Inspector del Cazador los waypoints, `WorldBounds` y el prefab de objeto
+   de interes. En los Boids asignar `WorldBounds` y la mascara de Boids.
+10. Prefab `InterestObject`: esfera en capa `InterestObject` con `Health`, `InterestObject`
+    y `HealthFeedback`.
+
 ## Organizacion de scripts
 
 - `Assets/Scripts/Recuperatorio/`: todo lo que usa la escena `Simulator.unity`.
@@ -56,3 +87,17 @@ y `Parcial2`.
 - `separationRadius` debe quedar menor que `neighbourRadius`.
 - Mover o separar Boids (o el Cazador) antes de Play no rompe nada.
 - En la vista Scene se ven los radios de flocking, vision y sensores.
+
+## Resumen de la consigna
+
+- Steering reutilizable: `SteeringBody` con Seek, Flee, Arrive, Pursuit, Evade,
+  Separation, Alignment y Cohesion; devuelve aceleracion y mueve por velocidad.
+- Percepcion por triggers: `TriggerSensor` con una lista local por sensor y roles
+  `BoidNeighbours`, `BoidThreat`, `BoidInterest` y `HunterVision`.
+- Flocking: `BoidFlocking` con radios y pesos configurables.
+- FSM del Boid: `BoidFSM` y estados Flocking, SeekObject, Consume, Evade, Dead y Respawn.
+- FSM del Cazador: `HunterFSM` y estados Patrol, Hunt, Gather y Rest, con TBA, energia,
+  melee/ranged y presa bloqueada hasta que muera o salga de los limites.
+- Feedback de dano: flash de color y barra de vida en `HealthFeedback`.
+- Sin estado global: no hay registros ni `FindObjectsOfType`; los agentes se detectan
+  entre si con sus sensores y el Cazador guarda la presa solo mientras la persigue.

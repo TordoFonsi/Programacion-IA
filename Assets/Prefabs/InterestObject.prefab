@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 6158172918062223857}
   - component: {fileID: 3709361805838384335}
   - component: {fileID: 7279892520811191084}
+  - component: {fileID: 8746889049894098627}
   m_Layer: 8
   m_Name: InterestObject
   m_TagString: InterestObject
@@ -139,3 +140,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
   maxHealth: 3
+--- !u!114 &8746889049894098627
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2183602676100638328}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 072a839ddadcb0548bfe0a2680b702a5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthFeedback
+  flashColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  flashDuration: 0.2
+  barWidth: 46
+  barHeight: 6
+  barOffset: 1.2
+  fullColor: {r: 0.25, g: 0.95, b: 0.35, a: 1}
+  lowColor: {r: 0.95, g: 0.25, b: 0.2, a: 1}
+  backgroundColor: {r: 0, g: 0, b: 0, a: 0.75}

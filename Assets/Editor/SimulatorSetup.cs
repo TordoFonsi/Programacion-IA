@@ -200,6 +200,8 @@ public static class SimulatorSetup
             Health health = boid.AddComponent<Health>();
             SetProperty(health, "maxHealth", 2);
 
+            boid.AddComponent<HealthFeedback>();
+
             boid.AddComponent<BoidFSM>();
 
             BoidAgent agent = boid.AddComponent<BoidAgent>();
@@ -332,6 +334,7 @@ public static class SimulatorSetup
 
         if (contents.GetComponent<InterestObject>() == null) contents.AddComponent<InterestObject>();
         if (contents.GetComponent<Health>() == null) contents.AddComponent<Health>();
+        if (contents.GetComponent<HealthFeedback>() == null) contents.AddComponent<HealthFeedback>();
 
         Health health = contents.GetComponent<Health>();
         SetProperty(health, "maxHealth", 3);

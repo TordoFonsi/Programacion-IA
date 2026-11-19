@@ -13,6 +13,19 @@ controlador global: cada agente decide con sus propios sensores.
 El script de Editor arma limites, piso, paredes, camara, waypoints, Boids y Cazador.
 Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspector.
 
+## Probar mover agentes
+
+El area de juego la define el objeto `Bounds` (tiene `WorldBounds`): los Boids se frenan y
+se mantienen dentro de esa caja. Si se seleccionan todos los objetos de la escena y se
+mueven, `Bounds` tambien se mueve y el area se corre con ellos, por eso da la impresion
+de que los Boids se escapan del mapa.
+
+Para probar el clamp:
+
+1. Mover o separar solo los Boids (o el padre `Boids`), no `Bounds`.
+2. Dar Play: los Boids vuelven solos hacia el area de `Bounds`.
+3. Si algo quedo desacomodado, `Tools/Setup Simulator` reconstruye la escena completa.
+
 ## Capas necesarias
 
 | Capa | Uso |
@@ -89,7 +102,8 @@ y `Parcial2`.
 - El HUD del Cazador muestra estado y energia; la etiqueta de cada Boid muestra su estado.
 - Cambiar `separationWeight`, `alignmentWeight` y `cohesionWeight` en `BoidFlocking` cambia el comportamiento.
 - `separationRadius` debe quedar menor que `neighbourRadius`.
-- Mover o separar Boids (o el Cazador) antes de Play no rompe nada.
+- Mover o separar Boids (o el Cazador) antes de Play no rompe nada; mover `Bounds`
+  corre el area de juego y da la sensacion de que los Boids se escapan.
 - En la vista Scene se ven los radios de flocking, vision y sensores.
 
 ## Resumen de la consigna

@@ -17,8 +17,6 @@ Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspe
 
 - `Assets/Scripts/Recuperatorio/`: todo lo que usa la escena `Simulator.unity`.
 - `Assets/Scripts/Parcial2/`: todo lo que usa la escena `Parcial2.unity`.
-- `Assets/Scripts/Recuperatorio/Legacy/`: scripts viejos del Simulator, se eliminan al
-  terminar la limpieza.
 
 Dentro de `Recuperatorio`:
 
@@ -27,7 +25,6 @@ Dentro de `Recuperatorio`:
 - `FSM/`: `State` y `StateMachine` compartidos.
 - `Core/`: steering, percepcion, vida, limites y objetos de interes.
 - `Feedback/`: HUD y visuales.
-- `Legacy/`: codigo viejo que se borra al terminar la limpieza.
 
 Cada escena usa solo sus propios scripts: no hay referencias cruzadas entre `Recuperatorio`
 y `Parcial2`.
@@ -42,6 +39,7 @@ y `Parcial2`.
 - Etapa 5: FSM del Cazador con Patrol, Hunt, Gather y Rest, ataque melee/ranged,
   energia, objetos de interes y HUD de estado.
 - Etapa 6: feedback de dano con flash de color y barra de vida sobre cada Boid y objeto.
+- Etapa 7: limpieza del codigo viejo del Simulator.
 
 ## A probar en esta etapa
 

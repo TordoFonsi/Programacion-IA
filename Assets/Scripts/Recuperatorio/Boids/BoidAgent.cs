@@ -162,11 +162,6 @@ public class BoidAgent : MonoBehaviour
         steering.Stop();
     }
 
-    public void Collected()
-    {
-        Collect();
-    }
-
     public void RespawnAtRandom()
     {
         health.ResetHealth();

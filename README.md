@@ -15,14 +15,15 @@ Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspe
 
 ## Estado actual
 
-- Etapa 1: steering reutilizable (`SteeringBody`) y una demo temporal de movimiento.
+- Etapa 1: steering reutilizable (`SteeringBody`).
 - Etapa 2: percepcion por triggers (`TriggerSensor`) con listas locales por sensor.
+- Etapa 3: flocking con Separation, Alignment y Cohesion, pesos y radios configurables.
 
 ## A probar en esta etapa
 
-- Al dar Play los Boids se mueven, frenan al llegar a un destino y no salen de los limites.
-- Cambiar `maxSpeed` y `maxForce` en `SteeringBody` cambia la forma de moverse.
-- Mover o separar Boids antes de Play no rompe nada: cada uno busca su propio destino.
-- En la vista Scene, seleccionar un Boid: se ven los radios de sus tres sensores.
-  Durante Play, el sensor dibuja lineas verdes hacia los objetos que detecta.
-- Todavia no hay flocking: los sensores ya reciben vecinos, pero la etapa 3 los usa.
+- Al dar Play los Boids forman un grupo y se mueven juntos sin superponerse.
+- Cambiar `separationWeight`, `alignmentWeight` y `cohesionWeight` en `BoidFlocking` cambia el comportamiento.
+- `separationRadius` debe quedar menor que `neighbourRadius`.
+- Mover o separar Boids antes de Play no rompe nada.
+- En la vista Scene se ven los radios de flocking y de los tres sensores.
+- Todavia no hay FSM ni Cazador: la etapa 4 agrega los estados del Boid.

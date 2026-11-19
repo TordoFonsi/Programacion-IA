@@ -1,172 +1,83 @@
+using System.Collections.Generic;
 using UnityEngine;
 
+[DisallowMultipleComponent]
 public class BoidFlocking : MonoBehaviour
 {
-    [Header("Neighbour Sensor")]
-    [SerializeField] private float neighbourRadius = 8f;
-    [SerializeField] private float separationRadius = 3f;
-    [SerializeField] private LayerMask boidLayer;
+    [Header("Radii")]
+    [SerializeField] private float neighbourRadius = 6f;
+    [SerializeField] private float separationRadius = 2.2f;
 
     [Header("Weights")]
     [SerializeField] private float separationWeight = 2f;
     [SerializeField] private float alignmentWeight = 1f;
     [SerializeField] private float cohesionWeight = 1f;
 
-    [Header("Hunter")]
-    [SerializeField] private float hunterRadius = 10f;
-    [SerializeField] private LayerMask hunterLayer;
-    [SerializeField] private Evade evade;
+    private readonly List<SteeringBody> neighbours = new List<SteeringBody>();
+    private readonly List<Transform> neighbourTransforms = new List<Transform>();
 
-    public Vector3 GetMovement()
+    public float NeighbourRadius => neighbourRadius;
+    public float SeparationRadius => separationRadius;
+    public float SeparationWeight => separationWeight;
+
+    public Vector3 GetFlocking(SteeringBody steering, IReadOnlyList<Collider> detected)
     {
-        Collider[] hunterHits =
-            Physics.OverlapSphere(
-                transform.position,
-                hunterRadius,
-                hunterLayer);
+        Collect(steering, detected, neighbourRadius);
 
-        if (hunterHits.Length > 0)
+        Vector3 separation = steering.Separation(neighbourTransforms, separationRadius);
+        Vector3 alignment = steering.Alignment(neighbours);
+        Vector3 cohesion = steering.Cohesion(neighbourTransforms);
+
+        return separation * separationWeight +
+               alignment * alignmentWeight +
+               cohesion * cohesionWeight;
+    }
+
+    public Vector3 GetSeparation(SteeringBody steering, IReadOnlyList<Collider> detected)
+    {
+        Collect(steering, detected, neighbourRadius);
+        return steering.Separation(neighbourTransforms, separationRadius) * separationWeight;
+    }
+
+    // Puente temporal para el BoidAgent viejo; se elimina al reescribir su FSM.
+    public bool IsEvading() => false;
+    public Vector3 GetMovement() => Vector3.zero;
+
+    private void Collect(SteeringBody steering, IReadOnlyList<Collider> detected, float radius)
+    {
+        neighbours.Clear();
+        neighbourTransforms.Clear();
+
+        if (steering == null || detected == null) return;
+
+        Vector3 origin = steering.transform.position;
+        float radiusSqr = radius * radius;
+
+        for (int i = 0; i < detected.Count; i++)
         {
-            return evade.GetDirection(
-                hunterHits[0].transform.position);
+            Collider collider = detected[i];
+            if (collider == null) continue;
+
+            SteeringBody candidate = collider.GetComponentInParent<SteeringBody>();
+            if (candidate == null || candidate == steering) continue;
+
+            BoidAgent boid = collider.GetComponentInParent<BoidAgent>();
+            if (boid != null && (boid.IsDead || boid.IsCollected)) continue;
+
+            if ((candidate.transform.position - origin).sqrMagnitude > radiusSqr) continue;
+            if (neighbours.Contains(candidate)) continue;
+
+            neighbours.Add(candidate);
+            neighbourTransforms.Add(candidate.transform);
         }
-
-        BoidAgent[] neighbours =
-            FindNeighbours();
-
-        Vector3 separation =
-            GetSeparation(neighbours);
-
-        Vector3 alignment =
-            GetAlignment(neighbours);
-
-        Vector3 cohesion =
-            GetCohesion(neighbours);
-
-        return
-            separation * separationWeight +
-            alignment * alignmentWeight +
-            cohesion * cohesionWeight;
     }
 
-    public bool IsEvading()
+    private void OnDrawGizmosSelected()
     {
-        Collider[] hunterHits =
-            Physics.OverlapSphere(
-                transform.position,
-                hunterRadius,
-                hunterLayer);
+        Gizmos.color = new Color(1f, 0.35f, 0.35f, 0.8f);
+        Gizmos.DrawWireSphere(transform.position, separationRadius);
 
-        return hunterHits.Length > 0;
-    }
-
-    private BoidAgent[] FindNeighbours()
-    {
-        Collider[] hits =
-            Physics.OverlapSphere(
-                transform.position,
-                neighbourRadius,
-                boidLayer);
-
-        BoidAgent[] result =
-            new BoidAgent[hits.Length];
-
-        int count = 0;
-
-        foreach (Collider hit in hits)
-        {
-            BoidAgent boid =
-                hit.GetComponent<BoidAgent>();
-
-            if (boid == null)
-                continue;
-
-            if (boid.gameObject == gameObject)
-                continue;
-
-            if (boid.IsDead)
-                continue;
-
-            result[count] = boid;
-            count++;
-        }
-
-        System.Array.Resize(
-            ref result,
-            count);
-
-        return result;
-    }
-
-    private Vector3 GetSeparation(
-        BoidAgent[] neighbours)
-    {
-        Vector3 result =
-            Vector3.zero;
-
-        int count = 0;
-
-        foreach (BoidAgent neighbour in neighbours)
-        {
-            float distance =
-                Vector3.Distance(
-                    transform.position,
-                    neighbour.transform.position);
-
-            if (distance <= separationRadius &&
-                distance > 0.01f)
-            {
-                Vector3 direction =
-                    transform.position -
-                    neighbour.transform.position;
-
-                result +=
-                    direction.normalized /
-                    distance;
-
-                count++;
-            }
-        }
-
-        if (count == 0)
-            return Vector3.zero;
-
-        return result / count;
-    }
-
-    private Vector3 GetAlignment(
-        BoidAgent[] neighbours)
-    {
-        if (neighbours.Length == 0)
-            return Vector3.zero;
-
-        Vector3 average =
-            Vector3.zero;
-
-        foreach (BoidAgent neighbour in neighbours)
-            average += neighbour.transform.forward;
-
-        return average /
-               neighbours.Length;
-    }
-
-    private Vector3 GetCohesion(
-        BoidAgent[] neighbours)
-    {
-        if (neighbours.Length == 0)
-            return Vector3.zero;
-
-        Vector3 center =
-            Vector3.zero;
-
-        foreach (BoidAgent neighbour in neighbours)
-            center +=
-                neighbour.transform.position;
-
-        center /=
-            neighbours.Length;
-
-        return center -
-               transform.position;
+        Gizmos.color = new Color(1f, 0.9f, 0.2f, 0.5f);
+        Gizmos.DrawWireSphere(transform.position, neighbourRadius);
     }
 }

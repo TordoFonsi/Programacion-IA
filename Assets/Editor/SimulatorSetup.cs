@@ -177,7 +177,14 @@ public static class SimulatorSetup
             SetProperty(steering, "maxForce", 14f);
             SetProperty(steering, "turnSpeed", 360f);
 
-            SteeringDemo demo = boid.AddComponent<SteeringDemo>();
+            BoidFlocking flocking = boid.AddComponent<BoidFlocking>();
+            SetProperty(flocking, "neighbourRadius", 6f);
+            SetProperty(flocking, "separationRadius", 2.2f);
+            SetProperty(flocking, "separationWeight", 2f);
+            SetProperty(flocking, "alignmentWeight", 1f);
+            SetProperty(flocking, "cohesionWeight", 1f);
+
+            FlockingDemo demo = boid.AddComponent<FlockingDemo>();
             SetProperty(demo, "bounds", bounds);
 
             CreateSensor(boid.transform, "NeighbourSensor", SensorRole.BoidNeighbours, 6f, boidLayer);

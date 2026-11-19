@@ -20,6 +20,15 @@ Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspe
 - `Assets/Scripts/Recuperatorio/Legacy/`: scripts viejos del Simulator, se eliminan al
   terminar la limpieza.
 
+Dentro de `Recuperatorio`:
+
+- `Boids/`: agente, flocking, FSM y estados del Boid.
+- `Hunter/`: FSM y estados del Cazador.
+- `FSM/`: `State` y `StateMachine` compartidos.
+- `Core/`: steering, percepcion, vida, limites y objetos de interes.
+- `Feedback/`: HUD y visuales.
+- `Legacy/`: codigo viejo que se borra al terminar la limpieza.
+
 Cada escena usa solo sus propios scripts: no hay referencias cruzadas entre `Recuperatorio`
 y `Parcial2`.
 

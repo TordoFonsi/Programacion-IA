@@ -22,6 +22,7 @@ public class BoidFlocking : MonoBehaviour
 
     public Vector3 GetFlocking(SteeringBody steering, IReadOnlyList<Collider> detected)
     {
+        if (steering == null) return Vector3.zero;
         Collect(steering, detected, neighbourRadius);
 
         Vector3 separation = steering.Separation(neighbourTransforms, separationRadius);
@@ -35,13 +36,10 @@ public class BoidFlocking : MonoBehaviour
 
     public Vector3 GetSeparation(SteeringBody steering, IReadOnlyList<Collider> detected)
     {
+        if (steering == null) return Vector3.zero;
         Collect(steering, detected, neighbourRadius);
         return steering.Separation(neighbourTransforms, separationRadius) * separationWeight;
     }
-
-    // Puente temporal para el BoidAgent viejo; se elimina al reescribir su FSM.
-    public bool IsEvading() => false;
-    public Vector3 GetMovement() => Vector3.zero;
 
     private void Collect(SteeringBody steering, IReadOnlyList<Collider> detected, float radius)
     {

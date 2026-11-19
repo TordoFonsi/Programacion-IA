@@ -10,6 +10,7 @@ public static class SimulatorSetup
     private const string WallMaterialPath = "Assets/Materials/Level/Wall.mat";
     private const string BoidMaterialPath = "Assets/Materials/BoidMaterial.mat";
     private const string MarkerMaterialPath = "Assets/Materials/ObjectMaterial.mat";
+    private const string InterestPrefabPath = "Assets/Prefabs/InterestObject.prefab";
 
     private static readonly Vector3 BoundsCenter = new Vector3(10f, 0f, 6f);
     private static readonly Vector3 BoundsSize = new Vector3(44f, 1f, 36f);
@@ -21,6 +22,8 @@ public static class SimulatorSetup
             return;
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+        EnsureInterestPrefab();
 
         WorldBounds bounds = CreateBounds();
         CreateGround(bounds);
@@ -184,8 +187,23 @@ public static class SimulatorSetup
             SetProperty(flocking, "alignmentWeight", 1f);
             SetProperty(flocking, "cohesionWeight", 1f);
 
-            FlockingDemo demo = boid.AddComponent<FlockingDemo>();
-            SetProperty(demo, "bounds", bounds);
+            Health health = boid.AddComponent<Health>();
+            SetProperty(health, "maxHealth", 2);
+
+            boid.AddComponent<BoidFSM>();
+
+            BoidAgent agent = boid.AddComponent<BoidAgent>();
+            SetProperty(agent, "visionRadius", 7f);
+            SetProperty(agent, "interestRadius", 5f);
+            SetProperty(agent, "consumeDistance", 1.6f);
+            SetProperty(agent, "consumeInterval", 0.7f);
+            SetProperty(agent, "consumeDamage", 1);
+            SetProperty(agent, "arriveSlowRadius", 4f);
+            SetProperty(agent, "respawnDelay", 4f);
+            SetProperty(agent, "respawnMargin", 2f);
+            SetProperty(agent, "boundsMargin", 3f);
+            SetProperty(agent, "boidLayer", (LayerMask)(1 << boidLayer));
+            SetProperty(agent, "bounds", bounds);
 
             CreateSensor(boid.transform, "NeighbourSensor", SensorRole.BoidNeighbours, 6f, boidLayer);
             CreateSensor(boid.transform, "ThreatSensor", SensorRole.BoidThreat, 7f, hunterLayer);
@@ -218,6 +236,28 @@ public static class SimulatorSetup
         Renderer renderer = target.GetComponent<Renderer>();
         Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
         if (renderer != null && material != null) renderer.sharedMaterial = material;
+    }
+
+    private static void EnsureInterestPrefab()
+    {
+        GameObject contents = PrefabUtility.LoadPrefabContents(InterestPrefabPath);
+        if (contents == null)
+        {
+            Debug.LogError("[SimulatorSetup] No se encontro " + InterestPrefabPath);
+            return;
+        }
+
+        if (contents.GetComponent<InterestObject>() == null) contents.AddComponent<InterestObject>();
+        if (contents.GetComponent<Health>() == null) contents.AddComponent<Health>();
+
+        Health health = contents.GetComponent<Health>();
+        SetProperty(health, "maxHealth", 3);
+
+        contents.layer = Layer("InterestObject");
+        SetMaterial(contents, MarkerMaterialPath);
+
+        PrefabUtility.SaveAsPrefabAsset(contents, InterestPrefabPath);
+        PrefabUtility.UnloadPrefabContents(contents);
     }
 
     private static int Layer(string name)
@@ -253,6 +293,9 @@ public static class SimulatorSetup
                 break;
             case Color color:
                 property.colorValue = color;
+                break;
+            case LayerMask mask:
+                property.intValue = mask.value;
                 break;
             case Object reference:
                 property.objectReferenceValue = reference;

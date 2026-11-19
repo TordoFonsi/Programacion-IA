@@ -1,429 +1,218 @@
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
+[DisallowMultipleComponent]
+[RequireComponent(typeof(SteeringBody))]
+[RequireComponent(typeof(Health))]
+[RequireComponent(typeof(BoidFlocking))]
+[RequireComponent(typeof(BoidFSM))]
 public class BoidAgent : MonoBehaviour
 {
-    [SerializeField] private float speed = 5f;
-    [SerializeField] private float respawnTime = 5f;
+    [Header("Perception")]
+    [SerializeField] private float visionRadius = 7f;
+    [SerializeField] private float interestRadius = 5f;
 
-    [Header("Movement Area")]
-    [SerializeField] private Transform movementArea;
-    [SerializeField]
-    private Vector3 movementAreaSize =
-        new Vector3(25f, 0f, 25f);
+    [Header("Object")]
+    [SerializeField] private float consumeDistance = 1.6f;
+    [SerializeField] private float consumeInterval = 0.7f;
+    [SerializeField] private int consumeDamage = 1;
+    [SerializeField] private float arriveSlowRadius = 4f;
 
-    [Header("Recovery")]
-    [SerializeField] private float recoveryRadius = 12f;
+    [Header("Respawn")]
+    [SerializeField] private float respawnDelay = 4f;
+    [SerializeField] private float respawnMargin = 2f;
 
-    [Header("Border Avoidance")]
-    [SerializeField] private float borderAvoidanceDistance = 3f;
-    [SerializeField] private float borderAvoidanceWeight = 3f;
+    [Header("Movement")]
+    [SerializeField] private float boundsMargin = 3f;
+    [SerializeField] private LayerMask boidLayer;
 
-    [Header("Interest")]
-    [SerializeField] private float interactionDistance = 1.5f;
-    [SerializeField] private int interactionDamage = 20;
-    [SerializeField] private float interactionInterval = 1f;
+    [Header("World")]
+    [SerializeField] private WorldBounds bounds;
 
+    private SteeringBody steering;
+    private Health health;
     private BoidFlocking flocking;
-    private BoidHealth health;
-    private Arrive arrive;
+    private BoidFSM fsm;
+    private Collider bodyCollider;
     private Renderer[] renderers;
-    private Collider[] colliders;
-    private bool isCollected;
-    private float interactionTimer;
+    private TriggerSensor neighbourSensor;
+    private TriggerSensor threatSensor;
+    private TriggerSensor interestSensor;
+    private bool collected;
 
-    private Vector3 deathPosition;
+    public bool IsDead => health != null && health.IsDead;
+    public bool IsCollected => collected;
+    public bool IsAlive => !IsDead && !IsCollected;
 
-    private string currentBehaviour = "Flocking";
+    public Health Health => health;
+    public SteeringBody Steering => steering;
+    public BoidFlocking Flocking => flocking;
+    public BoidFSM Fsm => fsm;
+    public WorldBounds Bounds => bounds;
 
-    public bool IsDead =>
-        health != null &&
-        health.IsDead;
+    public float VisionRadius => visionRadius;
+    public float InterestRadius => interestRadius;
+    public float ConsumeDistance => consumeDistance;
+    public float ConsumeInterval => consumeInterval;
+    public int ConsumeDamage => consumeDamage;
+    public float ArriveSlowRadius => arriveSlowRadius;
+    public float RespawnDelay => respawnDelay;
+    public float BoundsMargin => boundsMargin;
 
-    public bool IsCollected =>
-        isCollected;
+    public InterestObject CurrentInterest { get; set; }
+    public string CurrentBehaviour => fsm != null ? fsm.CurrentStateName : "None";
 
-    public string CurrentBehaviour =>
-        currentBehaviour;
+    public IReadOnlyList<Collider> NeighbourColliders =>
+        neighbourSensor != null ? neighbourSensor.Detected : null;
+
+    public IReadOnlyList<Collider> InterestColliders =>
+        interestSensor != null ? interestSensor.Detected : null;
 
     private void Awake()
     {
+        steering = GetComponent<SteeringBody>();
+        health = GetComponent<Health>();
         flocking = GetComponent<BoidFlocking>();
-        health = GetComponent<BoidHealth>();
-        arrive = GetComponent<Arrive>();
+        fsm = GetComponent<BoidFSM>();
+        bodyCollider = GetComponent<Collider>();
+        renderers = GetComponentsInChildren<Renderer>(true);
 
-        renderers =
-            GetComponentsInChildren<Renderer>();
+        TriggerSensor[] sensors = GetComponentsInChildren<TriggerSensor>(true);
+        for (int i = 0; i < sensors.Length; i++)
+        {
+            switch (sensors[i].Role)
+            {
+                case SensorRole.BoidNeighbours:
+                    neighbourSensor = sensors[i];
+                    break;
+                case SensorRole.BoidThreat:
+                    threatSensor = sensors[i];
+                    break;
+                case SensorRole.BoidInterest:
+                    interestSensor = sensors[i];
+                    break;
+            }
+        }
 
-        colliders =
-            GetComponentsInChildren<Collider>();
+        if (neighbourSensor != null) neighbourSensor.SetRadius(flocking.NeighbourRadius);
+        if (threatSensor != null) threatSensor.SetRadius(visionRadius);
+        if (interestSensor != null) interestSensor.SetRadius(interestRadius);
     }
 
-    private void Update()
+    private void Start()
     {
-        if (IsDead)
+        if (IsAlive && steering.Velocity.sqrMagnitude < 0.0001f)
         {
-            currentBehaviour = "Dead";
-            return;
+            Vector3 direction = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
+            steering.SetVelocity(direction * steering.MaxSpeed * 0.5f);
         }
-
-        if (IsCollected)
-        {
-            currentBehaviour = "Collected";
-            return;
-        }
-
-        InterestObject interest =
-            FindNearbyInterestObject();
-
-        if (interest != null)
-        {
-            float distance =
-                Vector3.Distance(
-                    transform.position,
-                    interest.transform.position);
-
-            if (distance <= interactionDistance)
-            {
-                currentBehaviour = "Arrive";
-
-                interactionTimer +=
-                    Time.deltaTime;
-
-                if (interactionTimer >=
-                    interactionInterval)
-                {
-                    interest.TakeDamage(
-                        interactionDamage);
-
-                    interactionTimer = 0f;
-                }
-
-                return;
-            }
-
-            currentBehaviour = "Arrive";
-
-            Vector3 arriveMovement =
-                arrive.GetDirection(
-                    interest.transform.position);
-
-            if (arriveMovement.sqrMagnitude >
-                0.01f)
-            {
-                transform.position +=
-                    arriveMovement.normalized *
-                    speed *
-                    Time.deltaTime;
-
-                transform.forward =
-                    arriveMovement.normalized;
-            }
-
-            KeepInsideMovementArea();
-
-            return;
-        }
-
-        if (flocking.IsEvading())
-        {
-            currentBehaviour = "Evade";
-        }
-        else
-        {
-            currentBehaviour = "Flocking";
-        }
-
-        Vector3 movement =
-            flocking.GetMovement();
-
-        Vector3 borderMovement =
-            GetBorderAvoidance();
-
-        movement +=
-            borderMovement *
-            borderAvoidanceWeight;
-
-        if (movement.sqrMagnitude <= 0.01f)
-        {
-            movement =
-                GetRecoveryMovement();
-        }
-
-        if (movement.sqrMagnitude <= 0.01f)
-            return;
-
-        movement.y = 0f;
-
-        transform.position +=
-            movement.normalized *
-            speed *
-            Time.deltaTime;
-
-        transform.forward =
-            movement.normalized;
-
-        KeepInsideMovementArea();
     }
 
-    public void TakeDamage(int damage)
+    public SteeringBody GetThreat()
     {
-        if (IsDead || IsCollected)
-            return;
+        return threatSensor != null ? threatSensor.GetClosest<SteeringBody>() : null;
+    }
 
-        health.TakeDamage(damage);
+    public InterestObject FindInterest()
+    {
+        if (interestSensor == null) return null;
 
-        if (IsDead)
+        InterestObject closest = null;
+        float best = float.MaxValue;
+        Vector3 origin = transform.position;
+
+        for (int i = 0; i < interestSensor.Detected.Count; i++)
         {
-            deathPosition =
-                transform.position;
+            Collider collider = interestSensor.Detected[i];
+            if (collider == null) continue;
 
-            flocking.enabled = false;
+            InterestObject candidate = collider.GetComponentInParent<InterestObject>();
+            if (candidate == null || candidate.IsDestroyed) continue;
 
-            currentBehaviour = "Dead";
+            float distance = (candidate.transform.position - origin).sqrMagnitude;
+            if (distance >= best) continue;
 
-            Debug.Log(
-                name +
-                " ha muerto.");
+            best = distance;
+            closest = candidate;
         }
+
+        return closest;
+    }
+
+    public void TakeDamage(int amount)
+    {
+        if (!IsAlive) return;
+
+        health.TakeDamage(amount);
+
+        if (health.IsDead)
+        {
+            collected = false;
+            CurrentInterest = null;
+            steering.Stop();
+        }
+    }
+
+    public void Collect()
+    {
+        if (collected || !IsDead) return;
+
+        collected = true;
+        CurrentInterest = null;
+        steering.Stop();
     }
 
     public void Collected()
     {
-        if (isCollected)
-            return;
-
-        isCollected = true;
-
-        flocking.enabled = false;
-
-        currentBehaviour = "Collected";
-
-        SetVisible(false);
-
-        StartCoroutine(
-            RespawnRoutine());
+        Collect();
     }
 
-    private IEnumerator RespawnRoutine()
+    public void RespawnAtRandom()
     {
-        yield return new WaitForSeconds(
-            respawnTime);
-
-        transform.position =
-            deathPosition;
-
         health.ResetHealth();
-
-        isCollected = false;
-
-        currentBehaviour = "Flocking";
-
+        collected = false;
+        CurrentInterest = null;
+        transform.position = FindSpawnPoint();
+        transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        steering.Stop();
+        steering.SetVelocity(transform.forward * steering.MaxSpeed * 0.5f);
         SetVisible(true);
-
-        flocking.enabled = true;
     }
 
-    private Vector3 GetRecoveryMovement()
+    public void SetVisible(bool visible)
     {
-        Collider[] hits =
-            Physics.OverlapSphere(
-                transform.position,
-                recoveryRadius);
+        for (int i = 0; i < renderers.Length; i++)
+            if (renderers[i] != null) renderers[i].enabled = visible;
 
-        Vector3 center =
-            Vector3.zero;
-
-        int count = 0;
-
-        foreach (Collider hit in hits)
-        {
-            BoidAgent boid =
-                hit.GetComponent<BoidAgent>();
-
-            if (boid == null)
-                continue;
-
-            if (boid == this)
-                continue;
-
-            if (boid.IsDead ||
-                boid.IsCollected)
-                continue;
-
-            center +=
-                boid.transform.position;
-
-            count++;
-        }
-
-        if (count == 0)
-            return Vector3.zero;
-
-        center /=
-            count;
-
-        Vector3 direction =
-            center -
-            transform.position;
-
-        direction.y = 0f;
-
-        return direction;
+        if (bodyCollider != null) bodyCollider.enabled = visible;
+        if (neighbourSensor != null) neighbourSensor.gameObject.SetActive(visible);
+        if (threatSensor != null) threatSensor.gameObject.SetActive(visible);
+        if (interestSensor != null) interestSensor.gameObject.SetActive(visible);
     }
 
-    private Vector3 GetBorderAvoidance()
+    private Vector3 FindSpawnPoint()
     {
-        if (movementArea == null)
-            return Vector3.zero;
+        if (bounds == null) return transform.position;
 
-        Vector3 center =
-            movementArea.position;
-
-        Vector3 position =
-            transform.position;
-
-        float minX =
-            center.x -
-            movementAreaSize.x / 2f;
-
-        float maxX =
-            center.x +
-            movementAreaSize.x / 2f;
-
-        float minZ =
-            center.z -
-            movementAreaSize.z / 2f;
-
-        float maxZ =
-            center.z +
-            movementAreaSize.z / 2f;
-
-        Vector3 direction =
-            Vector3.zero;
-
-        if (position.x - minX <
-            borderAvoidanceDistance)
+        for (int i = 0; i < 12; i++)
         {
-            float strength =
-                1f -
-                (position.x - minX) /
-                borderAvoidanceDistance;
-
-            direction.x +=
-                strength;
+            Vector3 candidate = bounds.RandomPoint(respawnMargin);
+            if (!Physics.CheckSphere(candidate + Vector3.up * 0.5f, 0.8f, boidLayer)) return candidate;
         }
 
-        if (maxX - position.x <
-            borderAvoidanceDistance)
-        {
-            float strength =
-                1f -
-                (maxX - position.x) /
-                borderAvoidanceDistance;
-
-            direction.x -=
-                strength;
-        }
-
-        if (position.z - minZ <
-            borderAvoidanceDistance)
-        {
-            float strength =
-                1f -
-                (position.z - minZ) /
-                borderAvoidanceDistance;
-
-            direction.z +=
-                strength;
-        }
-
-        if (maxZ - position.z <
-            borderAvoidanceDistance)
-        {
-            float strength =
-                1f -
-                (maxZ - position.z) /
-                borderAvoidanceDistance;
-
-            direction.z -=
-                strength;
-        }
-
-        return direction;
+        return bounds.RandomPoint(respawnMargin);
     }
 
-    private void KeepInsideMovementArea()
+    private void OnValidate()
     {
-        if (movementArea == null)
-            return;
-
-        Vector3 center =
-            movementArea.position;
-
-        Vector3 position =
-            transform.position;
-
-        float minX =
-            center.x -
-            movementAreaSize.x / 2f;
-
-        float maxX =
-            center.x +
-            movementAreaSize.x / 2f;
-
-        float minZ =
-            center.z -
-            movementAreaSize.z / 2f;
-
-        float maxZ =
-            center.z +
-            movementAreaSize.z / 2f;
-
-        position.x =
-            Mathf.Clamp(
-                position.x,
-                minX,
-                maxX);
-
-        position.z =
-            Mathf.Clamp(
-                position.z,
-                minZ,
-                maxZ);
-
-        transform.position =
-            position;
-    }
-
-    private void SetVisible(bool visible)
-    {
-        foreach (Renderer renderer in renderers)
-            renderer.enabled = visible;
-
-        foreach (Collider collider in colliders)
-            collider.enabled = visible;
-    }
-
-    private InterestObject FindNearbyInterestObject()
-    {
-        Collider[] hits =
-            Physics.OverlapSphere(
-                transform.position,
-                interactionDistance);
-
-        foreach (Collider hit in hits)
-        {
-            InterestObject interest =
-                hit.GetComponent<InterestObject>();
-
-            if (interest != null &&
-                !interest.IsDestroyed)
-            {
-                return interest;
-            }
-        }
-
-        return null;
+        visionRadius = Mathf.Max(1f, visionRadius);
+        interestRadius = Mathf.Max(1f, interestRadius);
+        consumeDistance = Mathf.Max(0.5f, consumeDistance);
+        consumeInterval = Mathf.Max(0.1f, consumeInterval);
+        consumeDamage = Mathf.Max(1, consumeDamage);
+        arriveSlowRadius = Mathf.Max(consumeDistance + 0.1f, arriveSlowRadius);
+        respawnDelay = Mathf.Max(0f, respawnDelay);
+        respawnMargin = Mathf.Max(0f, respawnMargin);
+        boundsMargin = Mathf.Max(0.5f, boundsMargin);
     }
 }

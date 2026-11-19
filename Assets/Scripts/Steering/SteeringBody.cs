@@ -163,6 +163,15 @@ public class SteeringBody : MonoBehaviour
         Velocity = Vector3.zero;
     }
 
+    public void FaceTowards(Vector3 point, float deltaTime)
+    {
+        Vector3 direction = Flat(point - transform.position);
+        if (direction.sqrMagnitude < 0.0001f) return;
+
+        Quaternion target = Quaternion.LookRotation(direction, Vector3.up);
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, target, turnSpeed * deltaTime);
+    }
+
     public void SetVelocity(Vector3 velocity)
     {
         Velocity = Vector3.ClampMagnitude(Flat(velocity), maxSpeed);

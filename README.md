@@ -18,6 +18,8 @@ Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspe
 - Etapa 1: steering reutilizable (`SteeringBody`).
 - Etapa 2: percepcion por triggers (`TriggerSensor`) con listas locales por sensor.
 - Etapa 3: flocking con Separation, Alignment y Cohesion, pesos y radios configurables.
+- Etapa 4: vida compartida (`Health`) y FSM propia del Boid con Flocking, SeekObject,
+  Consume, Evade, Dead y Respawn.
 
 ## A probar en esta etapa
 
@@ -25,5 +27,6 @@ Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspe
 - Cambiar `separationWeight`, `alignmentWeight` y `cohesionWeight` en `BoidFlocking` cambia el comportamiento.
 - `separationRadius` debe quedar menor que `neighbourRadius`.
 - Mover o separar Boids antes de Play no rompe nada.
-- En la vista Scene se ven los radios de flocking y de los tres sensores.
-- Todavia no hay FSM ni Cazador: la etapa 4 agrega los estados del Boid.
+- Cada Boid arranca en `Flocking`. Todavia no hay Cazador ni objetos, asi que Evade,
+  SeekObject, Consume y Respawn se prueban en la etapa 5.
+- En la vista Scene se ven los radios de flocking, vision y sensores.

@@ -1,31 +1,33 @@
 using UnityEngine;
 
+[DisallowMultipleComponent]
+[RequireComponent(typeof(Health))]
 public class InterestObject : MonoBehaviour
 {
-    [SerializeField] private int maxHealth = 100;
+    private Health health;
 
-    private int currentHealth;
-
-    public bool IsDestroyed =>
-        currentHealth <= 0;
+    public bool IsDestroyed => health == null || health.IsDead;
+    public bool IsAvailable => health != null && !health.IsDead;
 
     private void Awake()
     {
-        currentHealth = maxHealth;
+        health = GetComponent<Health>();
+        health.Died += HandleDied;
     }
 
-    public void TakeDamage(int damage)
+    private void OnDestroy()
     {
-        if (IsDestroyed)
-            return;
+        if (health != null) health.Died -= HandleDied;
+    }
 
-        currentHealth -= damage;
+    public void TakeDamage(int amount)
+    {
+        if (health == null) health = GetComponent<Health>();
+        if (health != null) health.TakeDamage(amount);
+    }
 
-        if (currentHealth <= 0)
-        {
-            currentHealth = 0;
-
-            Destroy(gameObject);
-        }
+    private void HandleDied()
+    {
+        Destroy(gameObject);
     }
 }

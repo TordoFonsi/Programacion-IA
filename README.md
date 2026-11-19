@@ -30,13 +30,19 @@ y `Parcial2`.
 - Etapa 3: flocking con Separation, Alignment y Cohesion, pesos y radios configurables.
 - Etapa 4: vida compartida (`Health`) y FSM propia del Boid con Flocking, SeekObject,
   Consume, Evade, Dead y Respawn.
+- Etapa 5: FSM del Cazador con Patrol, Hunt, Gather y Rest, ataque melee/ranged,
+  energia, objetos de interes y HUD de estado.
 
 ## A probar en esta etapa
 
 - Al dar Play los Boids forman un grupo y se mueven juntos sin superponerse.
+- El Cazador recorre los waypoints en `Patrol` y cada tanto deja un objeto de interes.
+- Cuando hay un Boid vivo y paso el TBA, pasa a `Hunt`: persigue, ataca de lejos (dano 1)
+  o de cerca (dano 2) y no cambia de presa hasta que muera o salga de los limites.
+- Si un Boid muere dentro de su vision, pasa a `Gather` y lo recolecta.
+- Si se queda sin energia en `Hunt`, pasa a `Rest` y no sale hasta recuperar el maximo.
+- El HUD muestra estado y energia del Cazador. `F1` lo oculta.
 - Cambiar `separationWeight`, `alignmentWeight` y `cohesionWeight` en `BoidFlocking` cambia el comportamiento.
 - `separationRadius` debe quedar menor que `neighbourRadius`.
-- Mover o separar Boids antes de Play no rompe nada.
-- Cada Boid arranca en `Flocking`. Todavia no hay Cazador ni objetos, asi que Evade,
-  SeekObject, Consume y Respawn se prueban en la etapa 5.
+- Mover o separar Boids (o el Cazador) antes de Play no rompe nada.
 - En la vista Scene se ven los radios de flocking, vision y sensores.

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -9,7 +10,9 @@ public static class SimulatorSetup
     private const string FloorMaterialPath = "Assets/Materials/Level/Floor.mat";
     private const string WallMaterialPath = "Assets/Materials/Level/Wall.mat";
     private const string BoidMaterialPath = "Assets/Materials/BoidMaterial.mat";
+    private const string HunterMaterialPath = "Assets/Materials/HunterMaterial.mat";
     private const string MarkerMaterialPath = "Assets/Materials/ObjectMaterial.mat";
+    private const string LineMaterialPath = "Assets/Materials/LineMaterial.mat";
     private const string InterestPrefabPath = "Assets/Prefabs/InterestObject.prefab";
 
     private static readonly Vector3 BoundsCenter = new Vector3(10f, 0f, 6f);
@@ -30,8 +33,9 @@ public static class SimulatorSetup
         CreateWalls(bounds);
         CreateCamera(bounds);
         CreateLight();
-        CreateWaypoints();
+        List<Transform> waypoints = CreateWaypoints();
         CreateBoids(bounds);
+        CreateHunter(bounds, waypoints);
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -118,9 +122,11 @@ public static class SimulatorSetup
         light.shadows = LightShadows.Soft;
     }
 
-    private static void CreateWaypoints()
+    private static List<Transform> CreateWaypoints()
     {
         GameObject root = new GameObject("Waypoints");
+        List<Transform> waypoints = new List<Transform>();
+
         Vector2[] offsets =
         {
             new Vector2(-18f, -14f),
@@ -139,7 +145,11 @@ public static class SimulatorSetup
             waypoint.layer = Layer("Obstacle");
             Object.DestroyImmediate(waypoint.GetComponent<Collider>());
             SetMaterial(waypoint, MarkerMaterialPath);
+
+            waypoints.Add(waypoint.transform);
         }
+
+        return waypoints;
     }
 
     private static void CreateBoids(WorldBounds bounds)
@@ -211,6 +221,59 @@ public static class SimulatorSetup
         }
     }
 
+    private static void CreateHunter(WorldBounds bounds, List<Transform> waypoints)
+    {
+        int boidLayer = Layer("Boid");
+
+        GameObject hunter = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        hunter.name = "Hunter";
+        hunter.transform.position = bounds.Center + new Vector3(0f, 0.8f, 12f);
+        hunter.transform.localScale = new Vector3(1.1f, 0.8f, 1.1f);
+        hunter.layer = Layer("Hunter");
+        SetMaterial(hunter, HunterMaterialPath);
+
+        SteeringBody steering = hunter.AddComponent<SteeringBody>();
+        SetProperty(steering, "maxSpeed", 4.6f);
+        SetProperty(steering, "maxForce", 10f);
+        SetProperty(steering, "turnSpeed", 270f);
+
+        CreateSensor(hunter.transform, "VisionSensor", SensorRole.HunterVision, 14f, boidLayer);
+
+        HunterFSM fsm = hunter.AddComponent<HunterFSM>();
+        SetProperty(fsm, "bounds", bounds);
+        SetProperty(fsm, "waypoints", waypoints);
+        SetProperty(fsm, "visionRadius", 14f);
+        SetProperty(fsm, "meleeRadius", 2f);
+        SetProperty(fsm, "rangeRadius", 8f);
+        SetProperty(fsm, "tba", 2f);
+        SetProperty(fsm, "meleeDamage", 2);
+        SetProperty(fsm, "rangedDamage", 1);
+        SetProperty(fsm, "maxEnergy", 100f);
+        SetProperty(fsm, "huntDrain", 10f);
+        SetProperty(fsm, "restRecharge", 20f);
+        SetProperty(fsm, "gatherTime", 1.5f);
+        SetProperty(fsm, "gatherDistance", 1.6f);
+        SetProperty(fsm, "interestPrefab", AssetDatabase.LoadAssetAtPath<GameObject>(InterestPrefabPath));
+        SetProperty(fsm, "interestInterval", 5f);
+        SetProperty(fsm, "maxInterestObjects", 5);
+        SetProperty(fsm, "interestSpawnRadius", 12f);
+
+        LineRenderer rangeLine = hunter.AddComponent<LineRenderer>();
+        rangeLine.sharedMaterial = EnsureLineMaterial();
+        rangeLine.startWidth = 0.06f;
+        rangeLine.endWidth = 0.06f;
+        rangeLine.loop = true;
+        rangeLine.useWorldSpace = false;
+        rangeLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        rangeLine.receiveShadows = false;
+
+        HunterAttackVisual visual = hunter.AddComponent<HunterAttackVisual>();
+        SetProperty(visual, "hunter", fsm);
+
+        HunterFeedback feedback = hunter.AddComponent<HunterFeedback>();
+        SetProperty(feedback, "hunter", fsm);
+    }
+
     private static TriggerSensor CreateSensor(Transform parent, string name, SensorRole role, float radius, int layer)
     {
         GameObject root = new GameObject(name);
@@ -236,6 +299,26 @@ public static class SimulatorSetup
         Renderer renderer = target.GetComponent<Renderer>();
         Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
         if (renderer != null && material != null) renderer.sharedMaterial = material;
+    }
+
+    private static Material EnsureLineMaterial()
+    {
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(LineMaterialPath);
+        if (material != null) return material;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Unlit/Color");
+        if (shader == null) return null;
+
+        material = new Material(shader);
+        material.name = "LineMaterial";
+
+        Color color = new Color(1f, 0.6f, 0.15f, 1f);
+        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+        material.color = color;
+
+        AssetDatabase.CreateAsset(material, LineMaterialPath);
+        return material;
     }
 
     private static void EnsureInterestPrefab()
@@ -296,6 +379,11 @@ public static class SimulatorSetup
                 break;
             case LayerMask mask:
                 property.intValue = mask.value;
+                break;
+            case List<Transform> transforms:
+                property.arraySize = transforms.Count;
+                for (int i = 0; i < transforms.Count; i++)
+                    property.GetArrayElementAtIndex(i).objectReferenceValue = transforms[i];
                 break;
             case Object reference:
                 property.objectReferenceValue = reference;

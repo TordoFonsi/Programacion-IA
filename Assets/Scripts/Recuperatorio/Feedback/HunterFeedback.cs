@@ -1,21 +1,32 @@
-using TMPro;
 using UnityEngine;
 
 public class HunterFeedback : MonoBehaviour
 {
-    [SerializeField] private FSMAgent agent;
-    [SerializeField] private TMP_Text stateText;
+    [SerializeField] private HunterFSM hunter;
 
-    private void Update()
+    private GUIStyle style;
+
+    private void Awake()
     {
-        if (agent == null ||
-            stateText == null)
+        if (hunter == null) hunter = GetComponent<HunterFSM>();
+    }
+
+    private void OnGUI()
+    {
+        if (hunter == null) return;
+
+        if (style == null)
         {
-            return;
+            style = new GUIStyle(GUI.skin.label);
+            style.fontSize = 14;
+            style.normal.textColor = Color.white;
         }
 
-        stateText.text =
-            "STATE: " +
-            agent.CurrentStateName;
+        string text =
+            "CAZADOR: " + hunter.CurrentStateName +
+            "\nEnergia: " + Mathf.RoundToInt(hunter.Energy) + " / " + Mathf.RoundToInt(hunter.MaxEnergy);
+
+        GUI.Box(new Rect(10f, 10f, 230f, 50f), GUIContent.none);
+        GUI.Label(new Rect(18f, 15f, 220f, 44f), text, style);
     }
 }

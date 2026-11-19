@@ -18,7 +18,9 @@ public class HunterFeedback : MonoBehaviour
         if (style == null)
         {
             style = new GUIStyle(GUI.skin.label);
-            style.fontSize = 14;
+            style.fontSize = 18;
+            style.fontStyle = FontStyle.Bold;
+            style.alignment = TextAnchor.MiddleLeft;
             style.normal.textColor = Color.white;
         }
 
@@ -26,7 +28,7 @@ public class HunterFeedback : MonoBehaviour
             "CAZADOR: " + hunter.CurrentStateName +
             "\nEnergia: " + Mathf.RoundToInt(hunter.Energy) + " / " + Mathf.RoundToInt(hunter.MaxEnergy);
 
-        GUI.Box(new Rect(10f, 10f, 230f, 50f), GUIContent.none);
-        GUI.Label(new Rect(18f, 15f, 220f, 44f), text, style);
+        GUI.Box(new Rect(10f, 10f, 330f, 76f), GUIContent.none);
+        GUI.Label(new Rect(22f, 16f, 310f, 64f), text, style);
     }
 }

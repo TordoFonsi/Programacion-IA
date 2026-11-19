@@ -220,6 +220,8 @@ public static class SimulatorSetup
             CreateSensor(boid.transform, "NeighbourSensor", SensorRole.BoidNeighbours, 6f, boidLayer);
             CreateSensor(boid.transform, "ThreatSensor", SensorRole.BoidThreat, 7f, hunterLayer);
             CreateSensor(boid.transform, "InterestSensor", SensorRole.BoidInterest, 5f, interestLayer);
+
+            boid.AddComponent<BoidFeedback>();
         }
     }
 
@@ -239,12 +241,12 @@ public static class SimulatorSetup
         SetProperty(steering, "maxForce", 10f);
         SetProperty(steering, "turnSpeed", 270f);
 
-        CreateSensor(hunter.transform, "VisionSensor", SensorRole.HunterVision, 14f, boidLayer);
+        CreateSensor(hunter.transform, "VisionSensor", SensorRole.HunterVision, 10f, boidLayer);
 
         HunterFSM fsm = hunter.AddComponent<HunterFSM>();
         SetProperty(fsm, "bounds", bounds);
         SetProperty(fsm, "waypoints", waypoints);
-        SetProperty(fsm, "visionRadius", 14f);
+        SetProperty(fsm, "visionRadius", 10f);
         SetProperty(fsm, "meleeRadius", 2f);
         SetProperty(fsm, "rangeRadius", 8f);
         SetProperty(fsm, "tba", 2f);

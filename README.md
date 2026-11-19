@@ -71,18 +71,22 @@ y `Parcial2`.
   energia, objetos de interes y HUD de estado.
 - Etapa 6: feedback de dano con flash de color y barra de vida sobre cada Boid y objeto.
 - Etapa 7: limpieza del codigo viejo del Simulator.
+- Etapa 8: vision del Cazador reducida, HUD del Cazador ampliado y HUD de estado por Boid.
 
 ## A probar en esta etapa
 
 - Al dar Play los Boids forman un grupo y se mueven juntos sin superponerse.
+- Cada Boid muestra su estado actual en una etiqueta sobre la barra de vida.
 - El Cazador recorre los waypoints en `Patrol` y cada tanto deja un objeto de interes.
-- Cuando hay un Boid vivo y paso el TBA, pasa a `Hunt`: persigue, ataca de lejos (dano 1)
-  o de cerca (dano 2) y no cambia de presa hasta que muera o salga de los limites.
+  Su vision es de 10 unidades, asi que la patrulla se aprecia mejor.
+- Cuando hay un Boid vivo dentro de su vision y paso el TBA, pasa a `Hunt`: persigue,
+  ataca de lejos (dano 1) o de cerca (dano 2) y no cambia de presa hasta que muera o
+  salga de los limites.
 - Al recibir dano el Boid parpadea en rojo y su barra de vida sobre el objeto baja.
   Lo mismo pasa con los objetos de interes que consumen los Boids.
 - Si un Boid muere dentro de su vision, pasa a `Gather` y lo recolecta.
 - Si se queda sin energia en `Hunt`, pasa a `Rest` y no sale hasta recuperar el maximo.
-- El HUD muestra estado y energia del Cazador.
+- El HUD del Cazador muestra estado y energia; la etiqueta de cada Boid muestra su estado.
 - Cambiar `separationWeight`, `alignmentWeight` y `cohesionWeight` en `BoidFlocking` cambia el comportamiento.
 - `separationRadius` debe quedar menor que `neighbourRadius`.
 - Mover o separar Boids (o el Cazador) antes de Play no rompe nada.

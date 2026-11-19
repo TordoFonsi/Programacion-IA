@@ -24,7 +24,7 @@ public class HunterFSM : MonoBehaviour
     [SerializeField] private float arriveSlowRadius = 3f;
 
     [Header("Perception")]
-    [SerializeField] private float visionRadius = 14f;
+    [SerializeField] private float visionRadius = 10f;
 
     [Header("Attack")]
     [SerializeField] private float tba = 2f;

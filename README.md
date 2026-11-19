@@ -13,6 +13,16 @@ controlador global: cada agente decide con sus propios sensores.
 El script de Editor arma limites, piso, paredes, camara, waypoints, Boids y Cazador.
 Los valores de radios, pesos, velocidades y tiempos quedan editables en el Inspector.
 
+## Organizacion de scripts
+
+- `Assets/Scripts/Recuperatorio/`: todo lo que usa la escena `Simulator.unity`.
+- `Assets/Scripts/Parcial2/`: todo lo que usa la escena `Parcial2.unity`.
+- `Assets/Scripts/Recuperatorio/Legacy/`: scripts viejos del Simulator, se eliminan al
+  terminar la limpieza.
+
+Cada escena usa solo sus propios scripts: no hay referencias cruzadas entre `Recuperatorio`
+y `Parcial2`.
+
 ## Estado actual
 
 - Etapa 1: steering reutilizable (`SteeringBody`).
